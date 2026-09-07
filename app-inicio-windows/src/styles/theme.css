@@ -3,7 +3,9 @@
   --surface-color: #393E46;
   --primary-color: #00ADB5;
   --text-color: #EEEEEE;
-}
+} 
+
+/* Este color me gusta, dejalo así */
 
 [data-theme='light'] {
   --bg-color: #EEEEEE;
