@@ -1,3 +1,4 @@
+```mermaid
 flowchart TD
     %% Estilos
     classDef frontend fill:#1e1e1e,stroke:#4a90e2,stroke-width:2px,color:#fff
