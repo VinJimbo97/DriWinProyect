@@ -1,34 +1,40 @@
-# Arquitectura y Flujo de la Aplicación
-
-Este documento detalla el flujo de funcionamiento de la aplicación, estructurado en dos fases principales: la configuración inicial (Post-Instalación) y la interfaz de uso regular.
-
-## Diagrama de Flujo
-
-El siguiente diagrama ilustra el recorrido del usuario desde el primer inicio hasta el uso continuo de las herramientas de la aplicación.
-
-```mermaid
 flowchart TD
-    A[Primer Inicio de la App] --> B[Evaluación de hardware]
-    B -- Confirmación del usuario --> C[Preguntas para creación de ambiente]
-    C --> D[Establecimiento de perfil de usuario]
-    D --> E[Búsqueda de Drivers y sugerencias a descargar]
-    E --> F[Revisión de posibles choques]
-    F --> G[Descarga de drivers]
-    G --> H[Inicio de la app]
+    %% Estilos
+    classDef frontend fill:#1e1e1e,stroke:#4a90e2,stroke-width:2px,color:#fff
+    classDef local fill:#2d2d2d,stroke:#50c878,stroke-width:2px,color:#fff
+    classDef azure fill:#0078d4,stroke:#fff,stroke-width:2px,color:#fff
+    classDef database fill:#f39c12,stroke:#fff,stroke-width:2px,color:#fff
 
-    H -- Luego de crear el perfil, de aquí iniciará siempre --> H
+    %% Subgrafos para separar responsabilidades
+    subgraph Cliente [1. Aplicación Local DriWin]
+        A[Primer Inicio de la App]:::frontend --> B[Cuestionario: Intenciones y Perfil]:::frontend
+        B --> C[Escaneo Local: WMI y PowerShell]:::local
+        C --> D[Extracción de Hardware IDs VEN/DEV y Drivers actuales]:::local
+        
+        K[Revisión de Choques y Resolución Local]:::local --> L[Confirmación de Sugerencias por Usuario]:::frontend
+        L --> M[Descarga de Drivers desde Fabricante y Apps vía Winget]:::local
+        
+        M --> N((Dashboard Principal)):::frontend
+        N --> O[Control de Hardware y Drivers]:::frontend
+        N --> P[Instalador de Apps por Perfil]:::frontend
+        N --> Q[Configuración y Privacidad]:::frontend
+    end
 
-    H --> I[Control de drivers]
-    H --> J[Búsqueda de Apps]
-    H --> K[Configuración]
+    subgraph Servidor [2. Microsoft Azure for Students]
+        E[API Backend: Recibe IDs anónimos]:::azure
+        F[(Base de Datos: ~30GB)]:::database
+        G[Cruce con PCI ID / USB ID]:::azure
+        H[Cruce con Catálogo Semilla MVP]:::azure
+        J[Respuesta JSON: Nombres reales y URLs oficiales]:::azure
+    end
 
-    I --> L[Mostrar dispositivos]
-    L --> M[Mostrar drivers]
-    M --> N[Administrar drivers]
+    %% Conexiones entre Cliente y Servidor
+    D -- "Petición Segura (Solo IDs de hardware)" --> E
+    E --> F
+    F --> G
+    G --> H
+    H --> J
+    J -- "Retorna Datos Procesados" --> K
 
-    J --> O[Mostrar Apps recomendadas según perfil]
-    O --> P[Descargar Apps]
-
-    K --> Q[Configuración general]
-    K --> R[Configuración de perfil]
-    K --> S[Ayuda]
+    %% Lógica de reinicio
+    N -. "Inicios posteriores" .-> A
