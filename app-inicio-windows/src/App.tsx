@@ -1,337 +1,362 @@
 import { useState, useEffect } from 'react';
 import './styles/theme.css';
 
-// Tipos para nuestro flujo
-type AppView = 
-  | 'evaluacion' | 'confirmacion' | 'quiz' | 'perfil_resultado' 
-  | 'busqueda' | 'choques' | 'descarga' | 'reinicio'
-  | 'inicio_app' | 'control_drivers' | 'busqueda_apps' | 'configuracion';
+// Tipos según diagrama de flujo
+type TabType = 'driwin' | 'apps' | 'optimizar' | 'configuracion' | 'premium';
+
+interface DriverItem {
+  device: string;
+  currentVer: string;
+  newVer?: string;
+  actionRequired: boolean;
+  installed?: boolean;
+}
+
+interface BloatwareItem {
+  id: string;
+  name: string;
+  description: string;
+  selected: boolean;
+}
 
 export default function App() {
-  const [view, setView] = useState<AppView>('evaluacion');
+  // Estados de arranque y seguridad (UAC y Onboarding)
+  const [hasAdminRights, setHasAdminRights] = useState<boolean | null>(null);
+  const [isNewUser, setIsNewUser] = useState<boolean>(true);
+  const [showQuiz, setShowQuiz] = useState<boolean>(false);
   
-  // Estados de datos
-  const [isAnalyzing, setIsAnalyzing] = useState(true);
-  const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
-  const [finalProfile, setFinalProfile] = useState<string>('');
-  const [conflictResolved, setConflictResolved] = useState(false);
+  // Perfiles seleccionados en Onboarding
+  const [selectedProfiles, setSelectedProfiles] = useState<string[]>([]);
+  const [activeProfileTitle, setActiveProfileTitle] = useState<string>('Gamer');
 
-  // Simulación de análisis inicial
+  // Estado de procesamiento paralelo (simulación Shell VEN/DEV)
+  const [parallelScanDone, setParallelScanDone] = useState<boolean>(false);
+
+  // Navegación de pestañas
+  const [activeTab, setActiveTab] = useState<TabType>('driwin');
+
+  // Datos de controladores
+  const [drivers, setDrivers] = useState<DriverItem[]>([
+    { device: 'Sonido Realtek HD', currentVer: '6.0.9239.1', actionRequired: false },
+    { device: 'NVIDIA RTX 3060 Laptop', currentVer: '512.15', newVer: '551.76 (Game Ready)', actionRequired: true, installed: false },
+    { device: 'Intel Iris Xe Graphics', currentVer: '30.0.101', newVer: '31.0.101.4575', actionRequired: true, installed: false },
+    { device: 'Controlador USB xHCI', currentVer: '10.0.22621', actionRequired: false },
+    { device: 'Bluetooth Device (RFCOMM)', currentVer: '22.110.0', actionRequired: false },
+    { device: 'Intel Wi-Fi 6 AX201', currentVer: '22.150.0.3', newVer: '23.30.0.6', actionRequired: true, installed: false },
+  ]);
+
+  // Lista para el panel de Limpieza de Bloatware
+  const [bloatwareList, setBloatwareList] = useState<BloatwareItem[]>([
+    { id: 'onedrive', name: 'Microsoft OneDrive', description: 'Consumo constante de red y disco en segundo plano', selected: true },
+    { id: 'gamebar', name: 'Xbox Game Bar', description: 'Superposiciones gráficas y servicios de captura innecesarios', selected: true },
+    { id: 'cortana', name: 'Cortana / Asistente', description: 'Telemetría obsoleta de búsqueda', selected: true },
+    { id: 'clipchamp', name: 'Microsoft Clipchamp', description: 'Editor web preinstalado en Windows 11', selected: false },
+  ]);
+
+  // 1. Verificación inicial de UAC (Permisos de Administrador)
   useEffect(() => {
-    if (view === 'evaluacion') {
-      setIsAnalyzing(true);
-      const timer = setTimeout(() => {
-        setIsAnalyzing(false);
-      }, 2500);
-      return () => clearTimeout(timer);
+    // Al abrir la app, evaluamos permisos
+    const checkSavedSession = localStorage.getItem('driwin_profile');
+    if (checkSavedSession) {
+      setIsNewUser(false);
+      setActiveProfileTitle(checkSavedSession);
     }
-  }, [view]);
+  }, []);
 
-  // Manejador del Quiz
-  const toggleInterest = (interest: string) => {
-    if (selectedInterests.includes(interest)) {
-      setSelectedInterests(selectedInterests.filter(i => i !== interest));
+  // Simulación de ejecución en paralelo del Shell mientras el usuario responde
+  useEffect(() => {
+    if (showQuiz) {
+      const scanTimer = setTimeout(() => {
+        setParallelScanDone(true);
+      }, 2000);
+      return () => clearTimeout(scanTimer);
+    }
+  }, [showQuiz]);
+
+  const handleGrantUAC = () => {
+    setHasAdminRights(true);
+    if (isNewUser) {
+      setShowQuiz(true);
+    }
+  };
+
+  const handleProfileToggle = (profile: string) => {
+    if (selectedProfiles.includes(profile)) {
+      setSelectedProfiles(selectedProfiles.filter(p => p !== profile));
     } else {
-      setSelectedInterests([...selectedInterests, interest]);
+      setSelectedProfiles([...selectedProfiles, profile]);
     }
   };
 
-  const processQuiz = () => {
-    if (selectedInterests.includes('Juegos') && selectedInterests.includes('Programación')) {
-      setFinalProfile('Gamer Híbrido / Desarrollador');
-    } else if (selectedInterests.includes('Juegos')) {
-      setFinalProfile('Gamer Puro');
-    } else if (selectedInterests.includes('Programación')) {
-      setFinalProfile('Desarrollador');
-    } else {
-      setFinalProfile('Usuario Estándar');
-    }
-    setView('perfil_resultado');
+  const completeQuiz = () => {
+    const mainProfile = selectedProfiles.length > 0 ? selectedProfiles.join(' & ') : 'Usuario Estándar';
+    setActiveProfileTitle(mainProfile);
+    localStorage.setItem('driwin_profile', mainProfile);
+    setShowQuiz(false);
   };
 
-  // --- COMPONENTE DE NAVEGACIÓN SUPERIOR (BARRA FIJA) ---
-  const renderNavBar = () => {
-    const navItems: { id: AppView; label: string }[] = [
-      { id: 'inicio_app', label: '🏠 Inicio' },
-      { id: 'control_drivers', label: '⚙️ Drivers' },
-      { id: 'busqueda_apps', label: '📦 Apps' },
-      { id: 'configuracion', label: '🔧 Config.' }
-    ];
-
-    return (
-      <nav style={{ 
-        display: 'flex', justifyContent: 'space-around', 
-        borderBottom: '1px solid var(--primary-color)', 
-        paddingBottom: '10px', marginBottom: '20px' 
-      }}>
-        {navItems.map(item => (
-          <button 
-            key={item.id}
-            onClick={() => setView(item.id)}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              borderBottom: view === item.id ? '3px solid var(--primary-color)' : '3px solid transparent',
-              color: view === item.id ? 'var(--primary-color)' : 'var(--text-color)',
-              fontWeight: view === item.id ? 'bold' : 'normal',
-              padding: '10px', cursor: 'pointer', transition: 'all 0.2s'
-            }}
-          >
-            {item.label}
-          </button>
-        ))}
-      </nav>
-    );
+  const installDriver = (deviceName: string) => {
+    setDrivers(prev => prev.map(d => d.device === deviceName ? { ...d, installed: true } : d));
   };
 
-  // ==========================================
-  // FASE 1: ONBOARDING (Sin Navbar)
-  // ==========================================
-  
-  if (view === 'evaluacion') {
-    return (
-      <div className="card text-center" style={{ textAlign: 'center' }}>
-        <h2>Evaluación de Hardware</h2>
-        <div style={{ margin: '40px 0' }}>
-          {isAnalyzing ? <div className="spinner"></div> : <p style={{ color: 'var(--primary-color)', fontSize: '2rem' }}>✓</p>}
-        </div>
-        <p>{isAnalyzing ? 'Analizando componentes físicos y arquitectura del sistema...' : 'Análisis completado exitosamente.'}</p>
-        {!isAnalyzing && <button className="btn-primary" onClick={() => setView('confirmacion')}>Siguiente</button>}
-      </div>
-    );
-  }
-
-  if (view === 'confirmacion') {
-    return (
-      <div className="card text-center">
-        <h2>Confirmación de Hardware</h2>
-        <div style={{ margin: '20px 0', padding: '15px', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: '8px', textAlign: 'left' }}>
-          <p><strong>Tipo:</strong> Notebook</p>
-          <p><strong>Modelo exacto:</strong> ASUS TUF Dash F15 (2022)</p>
-          <p><strong>CPU:</strong> Intel Core i5</p>
-          <p><strong>GPU:</strong> NVIDIA GeForce RTX 3060</p>
-          <p><strong>Almacenamiento:</strong> SSD 512GB (Estado: Óptimo)</p>
-        </div>
-        <p style={{ opacity: 0.8 }}>¿Este es tu equipo? Confirmar nos permite buscar los parámetros térmicos y controladores exactos.</p>
-        <button className="btn-primary" onClick={() => setView('quiz')}>Sí, es mi equipo</button>
-      </div>
-    );
-  }
-
-  if (view === 'quiz') {
-    return (
-      <div className="card text-center">
-        <h2>Cuestionario de Ambiente</h2>
-        <p style={{ opacity: 0.8, marginBottom: '20px' }}>¿Qué usos principales le darás a este equipo? (Selecciona una o varias)</p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
-          {['Juegos', 'Programación', 'Creación de Contenido', 'Ofimática'].map(interest => (
-            <button 
-              key={interest}
-              className={`btn-primary ${selectedInterests.includes(interest) ? '' : 'btn-outline'}`} 
-              onClick={() => toggleInterest(interest)}
-              style={{ width: '80%' }}
-            >
-              {selectedInterests.includes(interest) ? '✓ ' : ''} {interest}
-            </button>
-          ))}
-        </div>
-        <button 
-          className="btn-primary" 
-          disabled={selectedInterests.length === 0}
-          onClick={processQuiz} 
-          style={{ marginTop: '20px', backgroundColor: selectedInterests.length > 0 ? 'var(--primary-color)' : 'gray' }}
-        >
-          Generar Perfil
-        </button>
-      </div>
-    );
-  }
-
-  if (view === 'perfil_resultado') {
-    return (
-      <div className="card text-center">
-        <h2>Establecimiento de Perfil</h2>
-        <p>Según tus respuestas, hemos diseñado el siguiente perfil para tu PC:</p>
-        <div style={{ padding: '20px', border: '1px solid var(--primary-color)', borderRadius: '8px', margin: '20px 0', color: 'var(--primary-color)', fontSize: '1.2rem', fontWeight: 'bold' }}>
-          {finalProfile}
-        </div>
-        <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-          <button className="btn-primary btn-outline" onClick={() => setView('quiz')}>Rehacer Quiz</button>
-          <button className="btn-primary" onClick={() => setView('busqueda')}>Confirmar Perfil</button>
-        </div>
-      </div>
-    );
-  }
-
-  if (view === 'busqueda') {
-    return (
-      <div className="card text-center">
-        <h2>Búsqueda de Drivers y Sugerencias</h2>
-        <div style={{ margin: '30px 0' }}><div className="spinner"></div></div>
-        <p style={{ opacity: 0.9 }}>Buscando los mejores controladores para tu ASUS TUF adaptados al perfil <strong>{finalProfile}</strong>...</p>
-        <button className="btn-primary" onClick={() => setView('choques')} style={{ marginTop: '20px' }}>Simular Término de Búsqueda</button>
-      </div>
-    );
-  }
-
-  if (view === 'choques') {
-    return (
-      <div className="card">
-        <h2 style={{ textAlign: 'center' }}>Revisión de posibles choques</h2>
-        <p style={{ fontSize: '0.9rem', opacity: 0.9 }}>Hemos detectado un conflicto entre los requisitos de tus preferencias.</p>
-        
-        <div style={{ borderLeft: '4px solid #ff4757', padding: '15px', backgroundColor: 'rgba(255, 71, 87, 0.1)', marginBottom: '20px' }}>
-          <p style={{ margin: '0 0 10px 0', fontWeight: 'bold' }}>Conflicto: Gestión de Energía USB vs Latencia</p>
-          <p style={{ fontSize: '0.85rem' }}>El driver estándar ahorra batería desconectando puertos, pero puede causar input-lag al usar un mando por varias horas seguidas. El driver de alto rendimiento mantiene el polling rate constante pero gasta más batería.</p>
-          
-          <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
-            <button className={`btn-primary ${conflictResolved ? 'btn-outline' : ''}`} onClick={() => setConflictResolved(true)} style={{ flex: 1, fontSize: '0.8rem' }}>
-              Instalar Driver Estandar (Batería)
-            </button>
-            <button className={`btn-primary ${!conflictResolved ? 'btn-outline' : ''}`} onClick={() => setConflictResolved(true)} style={{ flex: 1, fontSize: '0.8rem' }}>
-              Instalar Driver Rendimiento (Mandos)
-            </button>
-          </div>
-        </div>
-        <button className="btn-primary" disabled={!conflictResolved} onClick={() => setView('descarga')} style={{ width: '100%', opacity: conflictResolved ? 1 : 0.5 }}>
-          Continuar con Descarga
-        </button>
-      </div>
-    );
-  }
-
-  if (view === 'descarga') {
-    return (
-      <div className="card text-center">
-        <h2>Descarga e Instalación</h2>
-        <p>Aplicando configuraciones y descargando paquetes...</p>
-        <div style={{ width: '100%', backgroundColor: 'rgba(255,255,255,0.1)', height: '20px', borderRadius: '10px', margin: '30px 0', overflow: 'hidden' }}>
-          <div style={{ width: '100%', height: '100%', backgroundColor: 'var(--primary-color)', animation: 'progress 3s ease forwards' }}></div>
-        </div>
-        <button className="btn-primary" onClick={() => setView('reinicio')}>Siguiente</button>
-      </div>
-    );
-  }
-
-  if (view === 'reinicio') {
-    return (
-      <div className="card text-center">
-        <h2>Reinicio Necesario</h2>
-        <p>Los drivers base se han instalado. Para que el control térmico de la GPU funcione correctamente, es necesario reiniciar el sistema.</p>
-        <div style={{ display: 'flex', gap: '15px', justifyContent: 'center', marginTop: '30px' }}>
-          <button className="btn-primary" style={{ backgroundColor: '#ff4757' }}>Reiniciar Ahora</button>
-          <button className="btn-primary btn-outline" onClick={() => setView('inicio_app')}>Entrar a la App (Reiniciar después)</button>
-        </div>
-      </div>
-    );
-  }
-
-  // ==========================================
-  // FASE 2: APLICACIÓN PRINCIPAL (Con Navbar)
-  // ==========================================
+  const toggleBloatware = (id: string) => {
+    setBloatwareList(prev => prev.map(item => item.id === id ? { ...item, selected: !item.selected } : item));
+  };
 
   return (
-    <div className="card" style={{ padding: '20px', minHeight: '500px', display: 'flex', flexDirection: 'column' }}>
-      {renderNavBar()}
+    <div className="window-container">
+      
+      {/* 1. Modal UAC (Control de Cuentas de Usuario) */}
+      {hasAdminRights === null && (
+        <div className="overlay-modal">
+          <div className="modal-box" style={{ textAlign: 'center' }}>
+            <h2 style={{ color: 'var(--primary-color)', margin: '0 0 10px 0' }}>Intervención de Seguridad (UAC)</h2>
+            <p style={{ opacity: 0.85, lineHeight: '1.6' }}>
+              DriWin requiere privilegios de administrador para comunicarse con los controladores de hardware e interactuar con el sistema operativo sin restricciones.
+            </p>
+            <div style={{ display: 'flex', gap: '15px', justifyContent: 'center', marginTop: '25px' }}>
+              <button className="btn-action" style={{ background: 'var(--primary-color)', color: '#222831' }} onClick={handleGrantUAC}>
+                Conceder Permisos de Administrador
+              </button>
+              <button className="btn-action" onClick={() => alert('La aplicación no puede continuar sin permisos.')}>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-      <div style={{ flex: 1, overflowY: 'auto', paddingRight: '10px' }}>
+      {/* 2. Modal Onboarding: Cuestionario de Perfil con Shell en Paralelo */}
+      {showQuiz && (
+        <div className="overlay-modal">
+          <div className="modal-box">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+              <h2 style={{ margin: 0 }}>Cuestionario de Perfil</h2>
+              <span style={{ fontSize: '0.8rem', color: parallelScanDone ? '#2ed573' : 'var(--primary-color)' }}>
+                {parallelScanDone ? '● Hardware Escaneado (En Paralelo)' : '○ Escaneando IDs VEN/DEV...'}
+              </span>
+            </div>
+            <p style={{ opacity: 0.8, fontSize: '0.9rem', marginBottom: '20px' }}>
+              Selecciona las actividades prioritarias de tu equipo para sugerir los controladores ideales:
+            </p>
+
+            <div className="quiz-option" onClick={() => handleProfileToggle('Gamer')}>
+              <div>
+                <strong>🎮 Uso este equipo para jugar (Gamer)</strong>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', opacity: 0.75 }}>Prioridad a drivers Game Ready y baja latencia</p>
+              </div>
+              <input type="checkbox" checked={selectedProfiles.includes('Gamer')} readOnly />
+            </div>
+
+            <div className="quiz-option" onClick={() => handleProfileToggle('Desarrollador')}>
+              <div>
+                <strong>💻 Uso este equipo para programar (Desarrollador)</strong>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', opacity: 0.75 }}>Drivers de virtualización y puertos seriales COM/UART</p>
+              </div>
+              <input type="checkbox" checked={selectedProfiles.includes('Desarrollador')} readOnly />
+            </div>
+
+            <div className="quiz-option" onClick={() => handleProfileToggle('Creador')}>
+              <div>
+                <strong>🎨 Apps de Edición e Ilustración (Creador)</strong>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', opacity: 0.75 }}>Drivers NVIDIA Studio y perfiles de color estables</p>
+              </div>
+              <input type="checkbox" checked={selectedProfiles.includes('Creador')} readOnly />
+            </div>
+
+            <div className="quiz-option" onClick={() => handleProfileToggle('Oficinista / Thin Clients')}>
+              <div>
+                <strong>🏢 Máxima Seguridad y Estabilidad (Oficinista)</strong>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', opacity: 0.75 }}>Drivers WHQL certificados y ahorro energético</p>
+              </div>
+              <input type="checkbox" checked={selectedProfiles.includes('Oficinista / Thin Clients')} readOnly />
+            </div>
+
+            <button 
+              className="btn-action" 
+              style={{ width: '100%', marginTop: '15px', padding: '12px', background: 'var(--primary-color)', color: '#222831' }}
+              onClick={completeQuiz}
+            >
+              Confirmar y Entrar a DriWin
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* --- BARRA SUPERIOR (HEADER) --- */}
+      <div className="titlebar">
+        <div className="nav-tabs">
+          <button className={`tab-btn ${activeTab === 'driwin' ? 'active' : ''}`} onClick={() => setActiveTab('driwin')}>
+            ⚡ DriWin
+          </button>
+          <button className={`tab-btn ${activeTab === 'apps' ? 'active' : ''}`} onClick={() => setActiveTab('apps')}>
+            📦 Apps
+          </button>
+          <button className={`tab-btn ${activeTab === 'optimizar' ? 'active' : ''}`} onClick={() => setActiveTab('optimizar')}>
+            🧹 Optimizar Windows
+          </button>
+        </div>
+
+        <div className="window-controls">
+          <button className="win-btn" title="Minimizar">─</button>
+          <button className="win-btn" title="Maximizar">□</button>
+          <button className="win-btn close" title="Cerrar" onClick={() => alert('Cerrando DriWin...')}>✕</button>
+        </div>
+      </div>
+
+      {/* --- CONTENIDO PRINCIPAL --- */}
+      <div className="content-area">
         
-        {view === 'inicio_app' && (
-          <div style={{ textAlign: 'center', marginTop: '20px' }}>
-            <h2>Bienvenido a tu Sistema Optimizado</h2>
-            <p>Tu equipo está funcionando bajo el perfil: <strong style={{ color: 'var(--primary-color)' }}>{finalProfile}</strong></p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginTop: '30px' }}>
-              <div style={{ padding: '20px', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>
-                <h3>🌡️ Sistema</h3>
-                <p style={{ fontSize: '0.9rem' }}>Temperatura GPU: 45°C<br/>Límite térmico: Activo (80°C Max)</p>
+        {/* PESTAÑA 1: DASHBOARD DE DRIVERS (Según tu boceto) */}
+        {activeTab === 'driwin' && (
+          <div className="split-view">
+            {/* Columna Izquierda: Drivers Actuales */}
+            <div className="column-panel">
+              <h2 style={{ borderBottom: '1px solid rgba(0,173,181,0.3)', paddingBottom: '10px' }}>Drivers Actuales</h2>
+              <div style={{ marginTop: '15px' }}>
+                {drivers.map(item => (
+                  <div key={item.device} className="driver-row">
+                    <div>
+                      <div style={{ fontWeight: 'bold' }}>{item.device}</div>
+                      <div style={{ fontSize: '0.8rem', opacity: 0.7 }}>Versión instalada: {item.currentVer}</div>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div style={{ padding: '20px', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>
-                <h3>🛡️ Seguridad</h3>
-                <p style={{ fontSize: '0.9rem' }}>Todos los controladores están en su última versión estable.</p>
+            </div>
+
+            {/* Columna Derecha: Drivers Actualizar según perfil */}
+            <div className="column-panel">
+              <h2 style={{ borderBottom: '1px solid rgba(0,173,181,0.3)', paddingBottom: '10px' }}>
+                Drivers a Actualizar
+                <span style={{ display: 'block', fontSize: '0.85rem', color: 'var(--primary-color)', fontWeight: 'normal', marginTop: '4px' }}>
+                  Según tu perfil: {activeProfileTitle}
+                </span>
+              </h2>
+
+              <div style={{ marginTop: '15px' }}>
+                {drivers.filter(d => d.actionRequired).map(item => (
+                  <div key={item.device} className="driver-row">
+                    <div>
+                      <div style={{ fontWeight: 'bold' }}>{item.device}</div>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--primary-color)' }}>{item.newVer}</div>
+                    </div>
+                    <button 
+                      className={`btn-action ${item.installed ? 'installed' : ''}`}
+                      onClick={() => installDriver(item.device)}
+                      disabled={item.installed}
+                    >
+                      {item.installed ? '✓ Instalado' : 'Install'}
+                    </button>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         )}
 
-        {view === 'control_drivers' && (
-          <div>
-            <h2>Control de Drivers</h2>
-            <div style={{ borderBottom: '1px solid gray', paddingBottom: '10px', marginBottom: '10px' }}>
-              <h4>Componentes Internos</h4>
-              <ul style={{ fontSize: '0.9rem', lineHeight: '1.6' }}>
-                <li><strong>GPU NVIDIA RTX 3060:</strong> v531.79 <span style={{ color: 'var(--primary-color)', fontSize: '0.8rem' }}>(Actualizado)</span></li>
-                <li><strong>Intel Wi-Fi 6 AX201:</strong> v22.160.0.4 <span style={{ color: '#ff4757', fontSize: '0.8rem' }}>(Actualización disponible)</span></li>
-              </ul>
-            </div>
-            <div style={{ borderBottom: '1px solid gray', paddingBottom: '10px', marginBottom: '10px' }}>
-              <h4>Dispositivos Externos (Detectados)</h4>
-              <ul style={{ fontSize: '0.9rem', lineHeight: '1.6' }}>
-                <li>Receptor Mando Inalámbrico - <em>Driver genérico (Requiere optimización)</em></li>
-              </ul>
-            </div>
-            <div>
-              <h4>Historial y Catálogo Histórico</h4>
-              <p style={{ fontSize: '0.85rem', opacity: 0.8 }}>Explora versiones antiguas de placas y componentes. <em>Nota: El sistema alertará si intentas instalar un driver incompatible.</em></p>
-              <button className="btn-primary btn-outline" style={{ width: '100%' }}>Abrir Catálogo Completo</button>
+        {/* PESTAÑA 2: INSTALADOR DE APPS */}
+        {activeTab === 'apps' && (
+          <div className="column-panel" style={{ width: '100%' }}>
+            <h2>Instalador de Software</h2>
+            <p style={{ opacity: 0.8 }}>Aplicaciones recomendadas para tu entorno configurado ({activeProfileTitle}):</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '15px', marginTop: '20px' }}>
+              <div className="driver-row">
+                <div><strong>Steam</strong><p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.7 }}>Plataforma de videojuegos</p></div>
+                <button className="btn-action">Instalar</button>
+              </div>
+              <div className="driver-row">
+                <div><strong>Visual Studio Code</strong><p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.7 }}>Editor de código</p></div>
+                <button className="btn-action">Instalar</button>
+              </div>
+              <div className="driver-row">
+                <div><strong>Discord</strong><p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.7 }}>Comunidad y llamadas</p></div>
+                <button className="btn-action">Instalar</button>
+              </div>
+              <div className="driver-row">
+                <div><strong>Git</strong><p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.7 }}>Control de versiones</p></div>
+                <button className="btn-action">Instalar</button>
+              </div>
             </div>
           </div>
         )}
 
-        {view === 'busqueda_apps' && (
-          <div>
-            <h2>Descarga de Aplicaciones</h2>
-            <p style={{ fontSize: '0.9rem', marginBottom: '20px' }}>Sugerencias seleccionadas para: <strong>{finalProfile}</strong></p>
+        {/* PESTAÑA 3: OPTIMIZAR WINDOWS (LIMPIEZA DE BLOATWARE) */}
+        {activeTab === 'optimizar' && (
+          <div className="column-panel" style={{ width: '100%' }}>
+            <h2>Limpieza de Bloatware</h2>
+            <p style={{ opacity: 0.8 }}>Desactiva o elimina componentes preinstalados de Windows que saturan la memoria en segundo plano:</p>
             
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-              {/* Apps dinámicas simuladas según perfil */}
-              {finalProfile.includes('Gamer') && (
-                <>
-                  <div style={{ border: '1px solid var(--primary-color)', padding: '10px', borderRadius: '6px' }}><input type="checkbox" defaultChecked /> Steam</div>
-                  <div style={{ border: '1px solid var(--primary-color)', padding: '10px', borderRadius: '6px' }}><input type="checkbox" defaultChecked /> Discord</div>
-                </>
-              )}
-              {finalProfile.includes('Desarrollador') && (
-                <>
-                  <div style={{ border: '1px solid var(--primary-color)', padding: '10px', borderRadius: '6px' }}><input type="checkbox" defaultChecked /> Visual Studio Code</div>
-                  <div style={{ border: '1px solid var(--primary-color)', padding: '10px', borderRadius: '6px' }}><input type="checkbox" defaultChecked /> Arduino IDE (Entorno C++)</div>
-                  <div style={{ border: '1px solid var(--primary-color)', padding: '10px', borderRadius: '6px' }}><input type="checkbox" defaultChecked /> Git</div>
-                </>
-              )}
-              {finalProfile === 'Usuario Estándar' && (
-                <>
-                  <div style={{ border: '1px solid var(--primary-color)', padding: '10px', borderRadius: '6px' }}><input type="checkbox" defaultChecked /> Google Chrome</div>
-                  <div style={{ border: '1px solid var(--primary-color)', padding: '10px', borderRadius: '6px' }}><input type="checkbox" defaultChecked /> VLC Player</div>
-                </>
-              )}
-            </div>
-            <button className="btn-primary" style={{ marginTop: '20px', width: '100%' }}>Descargar Apps Seleccionadas</button>
-          </div>
-        )}
-
-        {view === 'configuracion' && (
-          <div>
-            <h2>Configuración del Sistema</h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '20px' }}>
-              <div style={{ padding: '15px', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>
-                <h4 style={{ margin: '0 0 10px 0' }}>Configuración General</h4>
-                <p style={{ fontSize: '0.85rem', margin: '5px 0' }}><strong>Directorio de descargas:</strong> C:/Usuarios/TUF/Descargas/AppInicio</p>
-                <div style={{ marginTop: '10px' }}>
-                  <label style={{ fontSize: '0.9rem', marginRight: '10px' }}>Idioma:</label>
-                  <select style={{ padding: '5px', borderRadius: '4px', background: 'var(--surface-color)', color: 'var(--text-color)', border: '1px solid var(--primary-color)' }}>
-                    <option>Español</option>
-                    <option>Inglés</option>
-                  </select>
+            <div style={{ marginTop: '20px' }}>
+              {bloatwareList.map(item => (
+                <div key={item.id} className="quiz-option" onClick={() => toggleBloatware(item.id)}>
+                  <div>
+                    <strong>{item.name}</strong>
+                    <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', opacity: 0.75 }}>{item.description}</p>
+                  </div>
+                  <input type="checkbox" checked={item.selected} readOnly />
                 </div>
-              </div>
+              ))}
+            </div>
 
-              <div style={{ padding: '15px', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>
-                <h4 style={{ margin: '0 0 10px 0' }}>Soporte y Ayuda</h4>
-                <p style={{ fontSize: '0.85rem' }}>¿Encontraste un error de compatibilidad o necesitas ayuda técnica?</p>
-                <button className="btn-primary btn-outline" style={{ marginTop: '5px' }}>Contactar Soporte / Reportar Error</button>
-              </div>
+            <button 
+              className="btn-action" 
+              style={{ background: 'var(--danger-color)', borderColor: 'var(--danger-color)', color: '#fff', padding: '12px 24px', marginTop: '15px' }}
+              onClick={() => alert('Eliminando servicios y aplicaciones seleccionadas...')}
+            >
+              Ejecutar Limpieza Instantánea
+            </button>
+          </div>
+        )}
+
+        {/* PESTAÑA 4: CONFIGURACIÓN Y PERFIL */}
+        {activeTab === 'configuracion' && (
+          <div className="column-panel" style={{ width: '100%' }}>
+            <h2>Configuración y Perfil</h2>
+            <div style={{ backgroundColor: 'var(--surface-color)', padding: '20px', borderRadius: '8px', marginTop: '20px' }}>
+              <p><strong>Perfil activo:</strong> {activeProfileTitle}</p>
+              <p><strong>Permisos de Administrador:</strong> {hasAdminRights ? 'Activos (Elevados)' : 'Inactivos'}</p>
+              <button className="btn-action" onClick={() => setShowQuiz(true)} style={{ marginTop: '10px' }}>
+                Reconfigurar Cuestionario Inicial
+              </button>
             </div>
           </div>
         )}
+
+        {/* PESTAÑA 5: PLAN PREMIUM */}
+        {activeTab === 'premium' && (
+          <div className="column-panel" style={{ width: '100%', textAlign: 'center' }}>
+            <h2 style={{ color: 'var(--warning-color)' }}>👑 DriWin Premium</h2>
+            <p style={{ opacity: 0.85, maxWidth: '500px', margin: '0 auto' }}>
+              Desbloquea optimización térmica avanzada para GPU de portátiles, copias de seguridad de drivers y acceso a catálogos históricos.
+            </p>
+            <div style={{ padding: '20px', border: '1px solid var(--warning-color)', borderRadius: '8px', maxWidth: '350px', margin: '30px auto' }}>
+              <h3>Licencia Pro / Anual</h3>
+              <p style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>$9.99 USD</p>
+              <button className="btn-action" style={{ background: 'var(--warning-color)', color: '#222831', width: '100%' }}>
+                Actualizar Ahora
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* DOCK INFERIOR IZQUIERDO (Engranaje y Corona) */}
+        <div className="bottom-dock">
+          <button 
+            className={`dock-btn ${activeTab === 'configuracion' ? 'active' : ''}`} 
+            title="Configuración"
+            onClick={() => setActiveTab('configuracion')}
+          >
+            ⚙
+          </button>
+          <button 
+            className={`dock-btn premium ${activeTab === 'premium' ? 'active' : ''}`} 
+            title="Upgrade / Premium"
+            onClick={() => setActiveTab('premium')}
+          >
+            👑
+          </button>
+        </div>
 
       </div>
     </div>
