@@ -64,5 +64,5 @@ flowchart TB
     K -- No --> M --> M1
     
     %% Retorno de datos a la interfaz
-    L -- "Respuesta JSON" --> H
+    L -- "Respuesta Empaquetada de Nombre y la URL en Formato JSON" --> H
     M1 -. "Notifica Error Visual" .-> H
