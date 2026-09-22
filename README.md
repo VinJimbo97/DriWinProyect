@@ -18,7 +18,7 @@ Puedes explorar la interfaz y el flujo interactivo de nuestra aplicación en el 
 A continuación, se encuentran los entregables oficiales almacenados en este repositorio:
 
 * 📑 **[Documento de Propuesta Técnica](./docs/Propuesta_Tecnica.pdf)**
-* 📽️ **[Láminas de Presentación](./docs/Laminas_Presentacion.pdf)**
+* 📽️ **[Láminas de Presentación](./docs/Laminas_Presentacion_DriWin.pdf)**
 * 🗺️ **[Mapa del Producto (Arquitectura de Información)](./docs/Diagrama_Usuario.png)**
 * ⚙️ **[Diagrama de Arquitectura Cliente-Servidor](./docs/Diagrama_Tecnico.png)**
 
