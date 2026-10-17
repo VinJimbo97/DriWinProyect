@@ -1,0 +1,65 @@
+# ==========================================
+# 1. Variables de Entorno y Credenciales (CRÍTICO)
+# ==========================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+*.pem
+*.key
+*.cert
+
+# Permitir explícitamente el archivo de ejemplo para evaluación
+!.env.example
+
+# ==========================================
+# 2. Dependencias y Caché de Paquetes
+# ==========================================
+node_modules/
+**/node_modules/
+.pnp
+.pnp.js
+
+# ==========================================
+# 3. Compilación y Artefactos de Salida
+# ==========================================
+dist/
+**/dist/
+dist-ssr/
+**/dist-ssr/
+build/
+out/
+*.local
+
+# ==========================================
+# 4. Herramientas de Desarrollo y Extensiones
+# ==========================================
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.continue/
+.dbclient/
+*.sublime-workspace
+*.sublime-project
+
+# ==========================================
+# 5. Logs y Archivos Temporales del Sistema
+# ==========================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+.DS_Store
+Thumbs.db
+desktop.ini
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
