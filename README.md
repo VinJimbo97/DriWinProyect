@@ -49,3 +49,8 @@ app-inicio-Windows.
 
 En la terminal se lanzara un link en donde debes apretar la tecla Ctrl + click izquierdo. Para poder 
 interactuar con el prototipo interactivo.
+
+## ⚖️ Licencia y Aspectos Legales
+* **Licencia del proyecto:** [MIT](./LICENSE) — `Copyright (c) 2026 Joaquín Castillo y Equipo DriWin`.
+* **Licencias de terceros y descargo de responsabilidad:** [THIRD_PARTY_LICENSES.md](./THIRD_PARTY_LICENSES.md) (drivers de fabricantes, uso de identificadores PCI/USB/WMI y ausencia de *scraping*).
+* **Auditoría de dependencias (Hito 2):** [docs/Aspectos_Legales_Normativos_Licenciamiento_Hito2.md](./docs/Aspectos_Legales_Normativos_Licenciamiento_Hito2.md).
