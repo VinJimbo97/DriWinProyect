@@ -1,0 +1,403 @@
+{
+  "info": {
+    "_postman_id": "7b8f9a12-d456-4c89-a1b2-driwin000001",
+    "name": "DriWin API - Hito 2 (Oficial)",
+    "description": "Colección oficial de pruebas para la API REST de DriWin (Hito 2 - INGT1003). Incluye el ciclo CRUD completo exigido por rúbrica, endpoints de recomendación con patrón de Offloading a Azure Blob Storage, y reglas de bloatware.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "apiKey",
+      "value": "driwin_secret_key_2026_demo_auth_ok",
+      "type": "string"
+    },
+    {
+      "key": "createdComponentId",
+      "value": "5",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Sonda de Salud (Health)",
+      "item": [
+        {
+          "name": "GET Health Check (Verifica conexión a Azure PostgreSQL)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": "Sonda de vida que ejecuta un SELECT 1 contra Azure PostgreSQL Flexible Server y retorna el estado de la BD junto a la latencia de respuesta."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "1. CRUD Hardware Components (Recurso 1)",
+      "item": [
+        {
+          "name": "1.1 POST Crear Componente (Crear)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code es 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.component_id) {",
+                  "    pm.collectionVariables.set(\"createdComponentId\", jsonData.data.component_id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ven_id\": \"8086\",\n  \"dev_id\": \"9A49\",\n  \"subsys_id\": \"GENERIC\",\n  \"commercial_name\": \"Intel Iris Xe Graphics (Tiger Lake-LP GT2)\",\n  \"category\": \"GPU\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/hardware-components",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hardware-components"
+              ]
+            },
+            "description": "Inserta un nuevo componente de hardware en la tabla hardware_components. Requiere autenticación por X-API-Key."
+          },
+          "response": []
+        },
+        {
+          "name": "1.2 GET Listar y Filtrar Hardware (Leer)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/hardware-components?ven_id=8086&dev_id=9A49",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hardware-components"
+              ],
+              "query": [
+                {
+                  "key": "ven_id",
+                  "value": "8086"
+                },
+                {
+                  "key": "dev_id",
+                  "value": "9A49"
+                }
+              ]
+            },
+            "description": "Consulta el componente recién creado en PostgreSQL usando el índice B-Tree idx_hardware_lookup."
+          },
+          "response": []
+        },
+        {
+          "name": "1.3 PUT Actualizar Componente (Actualizar)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"commercial_name\": \"Intel Iris Xe Graphics G7 (WHQL Validated)\",\n  \"category\": \"GPU\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/hardware-components/{{createdComponentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hardware-components",
+                "{{createdComponentId}}"
+              ]
+            },
+            "description": "Actualiza el nombre comercial del componente en la base de datos."
+          },
+          "response": []
+        },
+        {
+          "name": "1.4 DELETE Eliminar Componente (Borrar)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/hardware-components/{{createdComponentId}}?cascade=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hardware-components",
+                "{{createdComponentId}}"
+              ],
+              "query": [
+                {
+                  "key": "cascade",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": "Elimina el componente con confirmación de cascada. Retorna HTTP 204 No Content."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Núcleo de Negocio y Recomendaciones (Patrón Offloading)",
+      "item": [
+        {
+          "name": "2.1 POST Recomendación de Driver (Offloading Azure Blob)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ven_id\": \"1002\",\n  \"dev_id\": \"1638\",\n  \"os_environment\": \"Win11_x64\",\n  \"profiles\": [\n    \"Gamer\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/recommendations/driver",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "recommendations",
+                "driver"
+              ]
+            },
+            "description": "Caso central: Cruza AMD Radeon Vega (1002:1638) en perfil Gamer. Retorna el driver Adrenalin y su enlace directo al contenedor drivers/ de Azure Blob Storage."
+          },
+          "response": []
+        },
+        {
+          "name": "2.2 GET Recomendación de Apps (Unión sin Duplicados - DISTINCT)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/recommendations/apps?profiles=Gamer,Creator",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "recommendations",
+                "apps"
+              ],
+              "query": [
+                {
+                  "key": "profiles",
+                  "value": "Gamer,Creator"
+                }
+              ]
+            },
+            "description": "Retorna el catálogo consolidado de aplicaciones para perfiles híbridos sin repetir apps, calculando el tamaño total en MB."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Reglas de Bloatware (PowerShell)",
+      "item": [
+        {
+          "name": "3.1 GET Listar Reglas de Bloatware (Filtro por Riesgo)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/bloatware-rules?risk_level=BAJO",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bloatware-rules"
+              ],
+              "query": [
+                {
+                  "key": "risk_level",
+                  "value": "BAJO"
+                }
+              ]
+            },
+            "description": "Lista reglas de desinstalación silenciosa de Windows filtradas por nivel de riesgo BAJO."
+          },
+          "response": []
+        },
+        {
+          "name": "3.2 POST Crear Regla de Bloatware",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"app_display_name\": \"Cortana Voice Assistant\",\n  \"package_signature\": \"*Microsoft.549981C3F5F10*\",\n  \"detection_powershell_cmd\": \"Get-AppxPackage -Name *Microsoft.549981C3F5F10*\",\n  \"removal_powershell_cmd\": \"Get-AppxPackage -Name *Microsoft.549981C3F5F10* | Remove-AppxPackage\",\n  \"risk_level\": \"BAJO\",\n  \"description\": \"Asistente de voz Cortana en desuso por Microsoft. Su eliminaci\\u00f3n no afecta la estabilidad del sistema.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bloatware-rules",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bloatware-rules"
+              ]
+            },
+            "description": "Inserta una regla de limpieza con script de PowerShell. Valida risk_level contra la restricción CHECK de PostgreSQL."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. Pruebas de Seguridad y Errores (Zero Trust)",
+      "item": [
+        {
+          "name": "4.1 Error 401 Unauthorized (Sin API Key)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"test\": true}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/hardware-components",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hardware-components"
+              ]
+            },
+            "description": "Demuestra la protección de rutas privadas cuando no se envía la cabecera X-API-Key."
+          },
+          "response": []
+        },
+        {
+          "name": "4.2 Error 400 Validation Error (Zod rechaza VEN_ID inválido)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ven_id\": \"AMD_NO_HEX\",\n  \"dev_id\": \"1638\",\n  \"os_environment\": \"Win11_x64\",\n  \"profiles\": [\n    \"Gamer\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/recommendations/driver",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "recommendations",
+                "driver"
+              ]
+            },
+            "description": "Demuestra la regla Zero Trust: Zod valida la forma antes de tocar la base de datos y rechaza valores no hexadecimales con HTTP 400."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

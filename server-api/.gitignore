@@ -1,0 +1,20 @@
+# Dependencias y artefactos generados
+node_modules/
+dist/
+coverage/
+
+# Secretos: el .env real NUNCA se versiona; la plantilla sí.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+*.pfx
+*.p12
+
+# Logs y temporales
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
