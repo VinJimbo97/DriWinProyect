@@ -1,3 +1,14 @@
+# Credenciales locales (defensa en profundidad si se opera sin la raíz)
+.env
+.env.*
+*.env
+# La plantilla de ejemplo SÍ se versiona (sin datos reales)
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.cert
+
 # Logs
 logs
 *.log

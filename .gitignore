@@ -2,17 +2,17 @@
 # 1. Variables de Entorno y Credenciales (CRÍTICO)
 # ==========================================
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
 *.env
 *.pem
 *.key
 *.cert
+*.pfx
+*.p12
 
 # Permitir explícitamente el archivo de ejemplo para evaluación
 !.env.example
+!.env.*.example
 
 # ==========================================
 # 2. Dependencias y Caché de Paquetes
@@ -31,6 +31,8 @@ dist-ssr/
 **/dist-ssr/
 build/
 out/
+coverage/
+**/coverage/
 *.local
 
 # ==========================================
@@ -38,6 +40,9 @@ out/
 # ==========================================
 .vscode/*
 !.vscode/extensions.json
+# Cobertura de .vscode anidados (db/, docs/, etc.)
+**/.vscode/*
+!**/.vscode/extensions.json
 .idea/
 .continue/
 .dbclient/

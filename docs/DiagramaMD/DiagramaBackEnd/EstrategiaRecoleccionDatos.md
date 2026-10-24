@@ -7,7 +7,7 @@ Para la etapa actual de desarrollo, la capa de datos opera mediante un repositor
 * **Propósito:** Asegurar la demostración técnica del flujo completo y la arquitectura de delegación de descargas (Offloading), aislando el sistema de interrupciones de red externas.
 * **Mecanismo:** Mapeo manual de una lista representativa de componentes de hardware, garantizando que el enlace de descarga responda de forma estricta a la intención del perfil seleccionado (ej. diferenciar entre software de alto rendimiento y software de estabilidad).
 
-### 2. Próximas Características: Plan de Expansión del Repertorio
+### 2. Próximas Características: Plan de Expansión del Repertorio (SIN FECHA DE IMPLEMENTACION/ CONCEPTO A FUTURO)
 Para automatizar y escalar la cobertura de hardware en futuras versiones, la arquitectura migrará a un modelo de recolección dinámico, procesando las solicitudes según la prioridad técnica de cada perfil de usuario.
 
 * **Perfil Oficinista (Certificación y Estabilidad Absoluta):** 

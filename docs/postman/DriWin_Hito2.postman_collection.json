@@ -1,0 +1,865 @@
+{
+  "info": {
+    "_postman_id": "d4f0c7a2-6f1b-4a3e-9c2d-driwinhito2001",
+    "name": "DriWin Hito 2 — API REST /api/v1",
+    "description": "Colección oficial de pruebas del Back-End DriWin (Hito 2). Cubre health, CRUD completo de hardware-components, CRUD de driver-packages, CRUD de bloatware-rules, los endpoints de negocio recommendations/driver y recommendations/apps, y los casos de error del contrato (400/401/403/404/409/422).\n\nAntes de ejecutar:\n1. Levantar la API: cd server-api && npm run dev\n2. Ejecutar db/init.sql sobre driwin_catalog\n3. Configurar las variables de colección: baseUrl, apiKey (rol read-write) y readOnlyKey (opcional)\n4. Ejecutar la carpeta en orden: Health → Hardware CRUD → Driver CRUD → Bloatware CRUD → Recommendations → Errores.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000/api/v1" },
+    { "key": "apiKey", "value": "REEMPLAZAR_API_KEY_READ_WRITE" },
+    { "key": "readOnlyKey", "value": "" },
+    { "key": "componentId", "value": "5" },
+    { "key": "driverId", "value": "13" },
+    { "key": "bloatwareId", "value": "4" }
+  ],
+  "item": [
+    {
+      "name": "01 · Health",
+      "item": [
+        {
+          "name": "GET health (sonda de vida)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] },
+            "description": "Pública. Verifica que el pool responda SELECT 1 y mide la latencia."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Base de datos arriba', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status).to.eql('ok');",
+                  "  pm.expect(body.database).to.eql('up');",
+                  "  pm.expect(body.version).to.match(/^\\d+\\.\\d+\\.\\d+$/);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 · Hardware CRUD (recurso 1)",
+      "item": [
+        {
+          "name": "POST crear hardware (201)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-API-Key", "value": "{{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ven_id\": \"8086\",\n  \"dev_id\": \"9A49\",\n  \"subsys_id\": \"GENERIC\",\n  \"commercial_name\": \"Intel Iris Xe Graphics (Tiger Lake-LP GT2)\",\n  \"category\": \"GPU\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/hardware-components", "host": ["{{baseUrl}}"], "path": ["hardware-components"] },
+            "description": "Crea un componente único (8086/9A49) para no chocar con la semilla."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('Cabecera Location presente', () => pm.expect(pm.response.headers.get('Location')).to.be.a('string'));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envoltorio { data }', () => pm.expect(body.data).to.be.an('object'));",
+                  "pm.test('Firma normalizada', () => {",
+                  "  pm.expect(body.data.ven_id).to.eql('8086');",
+                  "  pm.expect(body.data.dev_id).to.eql('9A49');",
+                  "});",
+                  "pm.collectionVariables.set('componentId', body.data.component_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET listar hardware (200 + meta)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/hardware-components?ven_id=8086&dev_id=9A49&page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["hardware-components"],
+              "query": [
+                { "key": "ven_id", "value": "8086" },
+                { "key": "dev_id", "value": "9A49" },
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envoltorio { data, meta }', () => {",
+                  "  pm.expect(body.data).to.be.an('array');",
+                  "  pm.expect(body.meta).to.have.property('total');",
+                  "  pm.expect(body.meta).to.have.property('totalPages');",
+                  "});",
+                  "pm.test('El registro creado está persistido', () => pm.expect(body.data.length).to.be.at.least(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET hardware por id (200)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/hardware-components/{{componentId}}", "host": ["{{baseUrl}}"], "path": ["hardware-components", "{{componentId}}"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('DTO con component_id', () => pm.expect(pm.response.json().data.component_id).to.be.a('number'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT actualizar hardware (200)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-API-Key", "value": "{{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"commercial_name\": \"Intel Iris Xe Graphics G7 (WHQL Validated)\",\n  \"category\": \"GPU\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/hardware-components/{{componentId}}", "host": ["{{baseUrl}}"], "path": ["hardware-components", "{{componentId}}"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Nombre actualizado', () => pm.expect(pm.response.json().data.commercial_name).to.include('WHQL'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE hardware con cascada (204)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "X-API-Key", "value": "{{apiKey}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/hardware-components/{{componentId}}?cascade=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["hardware-components", "{{componentId}}"],
+              "query": [{ "key": "cascade", "value": "true" }]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('204 No Content', () => pm.response.to.have.status(204));",
+                  "pm.test('Sin cuerpo', () => pm.expect(pm.response.text()).to.eql(''));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 · Driver Packages CRUD (recurso 2)",
+      "item": [
+        {
+          "name": "POST crear driver (201)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-API-Key", "value": "{{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"component_id\": 4,\n  \"profile_id\": 1,\n  \"os_environment\": \"Win11_x64\",\n  \"edition_name\": \"Realtek HD Audio Gamer Test Driver\",\n  \"version_number\": \"6.0.9999.1\",\n  \"release_date\": \"2026-10-20\",\n  \"download_url\": \"realtek-gamer-test-6.0.9999.1.exe\",\n  \"file_size_mb\": 100,\n  \"silent_install_flags\": \"/S\",\n  \"is_whql_certified\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/driver-packages", "host": ["{{baseUrl}}"], "path": ["driver-packages"] },
+            "description": "Combinación única (componente 4 + perfil 1 + Win11_x64). La URL relativa se valida y se transforma a https://driwinstorage.blob.core.windows.net/drivers/... (offloading)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('URL de Blob construida (offloading)', () => pm.expect(body.data.download_url).to.include('driwinstorage.blob.core.windows.net/drivers/'));",
+                  "pm.test('Cruce con hardware y perfil', () => {",
+                  "  pm.expect(body.data.profile_name).to.eql('Gamer');",
+                  "  pm.expect(body.data.component).to.have.property('ven_id');",
+                  "});",
+                  "pm.collectionVariables.set('driverId', body.data.driver_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET listar drivers (200)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/driver-packages?component_id=4&profile_id=1&os_environment=Win11_x64",
+              "host": ["{{baseUrl}}"],
+              "path": ["driver-packages"],
+              "query": [
+                { "key": "component_id", "value": "4" },
+                { "key": "profile_id", "value": "1" },
+                { "key": "os_environment", "value": "Win11_x64" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envoltorio { data, meta }', () => {",
+                  "  pm.expect(body.data).to.be.an('array');",
+                  "  pm.expect(body.meta.total).to.be.a('number');",
+                  "});",
+                  "pm.test('release_date en formato YYYY-MM-DD', () => pm.expect(body.data[0].release_date).to.match(/^\\d{4}-\\d{2}-\\d{2}$/));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET driver por id (200)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/driver-packages/{{driverId}}", "host": ["{{baseUrl}}"], "path": ["driver-packages", "{{driverId}}"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('200 OK', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT actualizar driver (200)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-API-Key", "value": "{{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version_number\": \"6.0.9999.2\",\n  \"release_date\": \"2026-10-22\",\n  \"download_url\": \"realtek-gamer-test-6.0.9999.2.exe\",\n  \"file_size_mb\": 102\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/driver-packages/{{driverId}}", "host": ["{{baseUrl}}"], "path": ["driver-packages", "{{driverId}}"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Versión actualizada', () => pm.expect(pm.response.json().data.version_number).to.eql('6.0.9999.2'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE driver (204)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "X-API-Key", "value": "{{apiKey}}" }],
+            "url": { "raw": "{{baseUrl}}/driver-packages/{{driverId}}", "host": ["{{baseUrl}}"], "path": ["driver-packages", "{{driverId}}"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('204 No Content', () => pm.response.to.have.status(204));"]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 · Bloatware Rules CRUD (recurso 3)",
+      "item": [
+        {
+          "name": "GET listar reglas (200)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/bloatware-rules", "host": ["{{baseUrl}}"], "path": ["bloatware-rules"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Envoltorio { data, meta }', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.data).to.be.an('array');",
+                  "  pm.expect(body.meta.total).to.be.a('number');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET filtrar por riesgo MEDIO (200)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/bloatware-rules?risk_level=MEDIO",
+              "host": ["{{baseUrl}}"],
+              "path": ["bloatware-rules"],
+              "query": [{ "key": "risk_level", "value": "MEDIO" }]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Sólo reglas MEDIO', () => pm.response.json().data.every((r) => r.risk_level === 'MEDIO'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST crear regla (201)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-API-Key", "value": "{{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"app_display_name\": \"DriWin Test Bloatware\",\n  \"package_signature\": \"*DriWinTestBloat*\",\n  \"detection_powershell_cmd\": \"Get-AppxPackage -Name *DriWinTestBloat* | Select-Object Name, Version\",\n  \"removal_powershell_cmd\": \"Get-AppxPackage -Name *DriWinTestBloat* | Remove-AppxPackage\",\n  \"risk_level\": \"BAJO\",\n  \"description\": \"Regla sintética creada por la colección de pruebas del Hito 2 para demostrar el POST.\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/bloatware-rules", "host": ["{{baseUrl}}"], "path": ["bloatware-rules"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('Location del recurso', () => pm.expect(pm.response.headers.get('Location')).to.include('/bloatware-rules/'));",
+                  "pm.collectionVariables.set('bloatwareId', pm.response.json().data.bloatware_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST duplicado (409 CONFLICT)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-API-Key", "value": "{{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"app_display_name\": \"DriWin Test Bloatware (duplicado)\",\n  \"package_signature\": \"*DriWinTestBloat*\",\n  \"detection_powershell_cmd\": \"Get-AppxPackage -Name *DriWinTestBloat* | Select-Object Name, Version\",\n  \"removal_powershell_cmd\": \"Get-AppxPackage -Name *DriWinTestBloat* | Remove-AppxPackage\",\n  \"risk_level\": \"BAJO\",\n  \"description\": \"Debe fallar por uq_bloatware_signature (SQLSTATE 23505).\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/bloatware-rules", "host": ["{{baseUrl}}"], "path": ["bloatware-rules"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409 Conflict', () => pm.response.to.have.status(409));",
+                  "pm.test('Código CONFLICT', () => pm.expect(pm.response.json().error.code).to.eql('CONFLICT'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET regla por id (200)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/bloatware-rules/{{bloatwareId}}", "host": ["{{baseUrl}}"], "path": ["bloatware-rules", "{{bloatwareId}}"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('200 OK', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT actualizar regla (200)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-API-Key", "value": "{{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"risk_level\": \"MEDIO\",\n  \"description\": \"Regla sintética actualizada por la colección de pruebas (riesgo MEDIO).\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/bloatware-rules/{{bloatwareId}}", "host": ["{{baseUrl}}"], "path": ["bloatware-rules", "{{bloatwareId}}"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Riesgo actualizado', () => pm.expect(pm.response.json().data.risk_level).to.eql('MEDIO'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE regla (204)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "X-API-Key", "value": "{{apiKey}}" }],
+            "url": { "raw": "{{baseUrl}}/bloatware-rules/{{bloatwareId}}", "host": ["{{baseUrl}}"], "path": ["bloatware-rules", "{{bloatwareId}}"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('204 No Content', () => pm.response.to.have.status(204));"]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 · Recommendations (negocio)",
+      "item": [
+        {
+          "name": "POST driver recomendado — caso Javier (200)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-API-Key", "value": "{{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ven_id\": \"1002\",\n  \"dev_id\": \"1638\",\n  \"subsys_id\": \"GENERIC\",\n  \"os_environment\": \"Win11_x64\",\n  \"profiles\": [\"Gamer\"]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/recommendations/driver", "host": ["{{baseUrl}}"], "path": ["recommendations", "driver"] },
+            "description": "Caso de uso central: AMD Radeon Vega + perfil Gamer. Debe devolver el Adrenalin 24.9.1 y metadatos de offloading."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envoltorio { data, meta }', () => {",
+                  "  pm.expect(body.data).to.have.all.keys('component', 'recommendation', 'alternatives', 'offloading');",
+                  "  pm.expect(body.meta).to.have.property('query_time_ms');",
+                  "});",
+                  "pm.test('Driver Adrenalin para Gamer', () => {",
+                  "  pm.expect(body.data.recommendation.profile_name).to.eql('Gamer');",
+                  "  pm.expect(body.data.recommendation.edition_name).to.include('Adrenalin');",
+                  "  pm.expect(body.data.recommendation.release_date).to.match(/^\\d{4}-\\d{2}-\\d{2}$/);",
+                  "});",
+                  "pm.test('Offloading hacia Azure Blob (el binario no pasa por la API)', () => {",
+                  "  pm.expect(body.data.offloading.strategy).to.eql('DIRECT_AZURE_BLOB');",
+                  "  pm.expect(body.data.offloading.container).to.eql('drivers');",
+                  "  pm.expect(body.data.offloading.binary_traverses_api).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST driver — alias Hito 1 ven/dev/profile (200)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-API-Key", "value": "{{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ven\": \"1002\",\n  \"dev\": \"1638\",\n  \"os_environment\": \"Win11_x64\",\n  \"profile\": \"Creator\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/recommendations/driver", "host": ["{{baseUrl}}"], "path": ["recommendations", "driver"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK (compatibilidad Hito 1)', () => pm.response.to.have.status(200));",
+                  "pm.test('Perfil Creator resuelto', () => pm.expect(pm.response.json().data.recommendation.profile_name).to.eql('Creator'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST driver sin paquete para el SO (422 NO_DRIVER_FOR_PROFILE)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-API-Key", "value": "{{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ven_id\": \"14C3\",\n  \"dev_id\": \"7961\",\n  \"os_environment\": \"Win10_x64\",\n  \"profiles\": [\"Gamer\"]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/recommendations/driver", "host": ["{{baseUrl}}"], "path": ["recommendations", "driver"] },
+            "description": "El hardware y el perfil existen, pero la semilla sólo publica drivers Win11_x64 para ese componente."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('422 Unprocessable Entity', () => pm.response.to.have.status(422));",
+                  "pm.test('Código NO_DRIVER_FOR_PROFILE', () => pm.expect(pm.response.json().error.code).to.eql('NO_DRIVER_FOR_PROFILE'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET apps recomendadas Gamer+Creator (200)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "X-API-Key", "value": "{{apiKey}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/recommendations/apps?profiles=Gamer,Creator",
+              "host": ["{{baseUrl}}"],
+              "path": ["recommendations", "apps"],
+              "query": [{ "key": "profiles", "value": "Gamer,Creator" }]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Unión sin duplicados (10 apps)', () => {",
+                  "  pm.expect(body.data).to.be.an('array');",
+                  "  pm.expect(body.meta.total).to.eql(body.data.length);",
+                  "  const names = body.data.map((a) => a.app_name);",
+                  "  pm.expect(new Set(names).size).to.eql(names.length);",
+                  "});",
+                  "pm.test('Metadatos del contrato', () => {",
+                  "  pm.expect(body.meta.profiles).to.eql(['Gamer', 'Creator']);",
+                  "  pm.expect(body.meta.total_size_mb).to.be.a('number');",
+                  "});",
+                  "pm.test('source_profiles trazable', () => pm.expect(body.data[0].source_profiles).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06 · Errores y seguridad (envoltorio único)",
+      "item": [
+        {
+          "name": "POST hardware sin API key (401)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ven_id\": \"1002\",\n  \"dev_id\": \"1638\",\n  \"commercial_name\": \"Sin credencial\",\n  \"category\": \"GPU\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/hardware-components", "host": ["{{baseUrl}}"], "path": ["hardware-components"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.test('Envoltorio de error completo', () => {",
+                  "  pm.expect(body.error).to.have.all.keys('code', 'message', 'timestamp', 'path', 'requestId', 'hint');",
+                  "  pm.expect(body.error.code).to.eql('UNAUTHORIZED');",
+                  "  pm.expect(body.error.requestId).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST hardware con clave de sólo lectura (403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-API-Key", "value": "{{readOnlyKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ven_id\": \"1002\",\n  \"dev_id\": \"1638\",\n  \"commercial_name\": \"Lectura\",\n  \"category\": \"GPU\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/hardware-components", "host": ["{{baseUrl}}"], "path": ["hardware-components"] },
+            "description": "Requiere configurar readOnlyKey. Sin clave de sólo lectura, la API devuelve 401."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('readOnlyKey')) {",
+                  "  console.warn('readOnlyKey vacío: se omite la aserción 403.');",
+                  "} else {",
+                  "  pm.test('403 Forbidden', () => pm.response.to.have.status(403));",
+                  "  pm.test('Código FORBIDDEN', () => pm.expect(pm.response.json().error.code).to.eql('FORBIDDEN'));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET hardware con ven_id inválido (400 + details)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/hardware-components?ven_id=AMD",
+              "host": ["{{baseUrl}}"],
+              "path": ["hardware-components"],
+              "query": [{ "key": "ven_id", "value": "AMD" }]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('Detalle campo a campo', () => {",
+                  "  pm.expect(body.error.code).to.eql('VALIDATION_ERROR');",
+                  "  pm.expect(body.error.details[0].field).to.eql('ven_id');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET hardware inexistente (404 NOT_FOUND)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/hardware-components/999999", "host": ["{{baseUrl}}"], "path": ["hardware-components", "999999"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404 Not Found', () => pm.response.to.have.status(404));",
+                  "pm.test('Código NOT_FOUND', () => pm.expect(pm.response.json().error.code).to.eql('NOT_FOUND'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST driver con hardware inexistente (404 NOT_FOUND)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-API-Key", "value": "{{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ven_id\": \"FFFF\",\n  \"dev_id\": \"FFFF\",\n  \"os_environment\": \"Win11_x64\",\n  \"profiles\": [\"Gamer\"]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/recommendations/driver", "host": ["{{baseUrl}}"], "path": ["recommendations", "driver"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404 Not Found', () => pm.response.to.have.status(404));",
+                  "pm.test('Código NOT_FOUND', () => pm.expect(pm.response.json().error.code).to.eql('NOT_FOUND'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST driver con perfil inexistente (409 CONFLICT)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-API-Key", "value": "{{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ven_id\": \"1002\",\n  \"dev_id\": \"1638\",\n  \"os_environment\": \"Win11_x64\",\n  \"profiles\": [\"GamerX\"]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/recommendations/driver", "host": ["{{baseUrl}}"], "path": ["recommendations", "driver"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409 Conflict', () => pm.response.to.have.status(409));",
+                  "pm.test('Código CONFLICT', () => pm.expect(pm.response.json().error.code).to.eql('CONFLICT'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET ruta desconocida (404 uniforme)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/no-existe", "host": ["{{baseUrl}}"], "path": ["no-existe"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404 Not Found', () => pm.response.to.have.status(404));",
+                  "pm.test('Envoltorio de error', () => pm.expect(pm.response.json().error).to.have.property('requestId'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE bloatware con id no numérico (400)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "X-API-Key", "value": "{{apiKey}}" }],
+            "url": { "raw": "{{baseUrl}}/bloatware-rules/abc", "host": ["{{baseUrl}}"], "path": ["bloatware-rules", "abc"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('Detalle del campo id', () => pm.expect(pm.response.json().error.details[0].field).to.eql('id'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
