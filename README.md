@@ -172,6 +172,22 @@ npm run build
 npm start
 ```
 
+### 5.1) (Opcional) Generar datos sintéticos
+
+El script agrega usuarios de prueba a `synthetic_users` respetando la matriz
+comercial (plan acorde al segmento y nunca más PCs que `max_devices`). Es
+**reproducible** (misma `--seed` ⇒ mismos usuarios), **reemplaza** el lote
+anterior en cada ejecución y **no toca** los 6 usuarios de `init.sql`. Los
+correos usan el dominio reservado `driwin-sintetico.example`, por lo que no
+contienen datos personales reales.
+
+```powershell
+cd server-api
+npm run seed:synthetic -- --dry-run                 # vista previa, no escribe
+npm run seed:synthetic                              # 100 usuarios, semilla 42
+npm run seed:synthetic -- --count 1000 --seed 7     # otro volumen / semilla
+```
+
 ### 6) Levantar el Front-End
 
 ```powershell
