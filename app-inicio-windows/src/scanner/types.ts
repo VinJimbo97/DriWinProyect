@@ -5,7 +5,7 @@ import type { OsEnvironment } from '../api/types';
  * dispositivos). Es el formato "crudo" que entregará el escáner real del .exe.
  */
 export interface RawPnpDevice {
-  /** Ej: PCI\VEN_10DE&DEV_2504&SUBSYS_88C61043&REV_A1\4&1A2B3C4D&0&0008 */
+  /** Ej: PCI\VEN_10DE&DEV_2684&SUBSYS_163810DE&REV_A1\4&1A2B3C4D&0&0008 */
   instance_id: string;
   friendly_name: string;
   /** Clase de Windows: Display, Net, MEDIA, USB, System... */

@@ -33,3 +33,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Electron: compilación del proceso principal e instaladores generados
+dist-electron
+release

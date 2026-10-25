@@ -252,3 +252,21 @@ body {
   accent-color: var(--primary-color);
   cursor: pointer;
 }
+
+/* App de escritorio (Electron): sin marco de Windows, ocupa toda la ventana */
+.is-desktop .window-container {
+  width: 100vw;
+  height: 100vh;
+  max-width: none;
+  max-height: none;
+  box-shadow: none;
+}
+
+/* La barra superior arrastra la ventana; los botones siguen siendo clicables */
+.is-desktop .titlebar {
+  -webkit-app-region: drag;
+}
+
+.is-desktop .titlebar button {
+  -webkit-app-region: no-drag;
+}

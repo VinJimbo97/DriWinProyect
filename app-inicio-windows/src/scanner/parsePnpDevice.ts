@@ -11,7 +11,7 @@ const CATEGORY_BY_CLASS: Record<string, string> = {
 
 /**
  * Extrae fabricante (VEN) y modelo (DEV) del Instance ID de Windows.
- *   PCI:     PCI\VEN_10DE&DEV_2504&...          → 10DE / 2504
+ *   PCI:     PCI\VEN_10DE&DEV_2684&...          → 10DE / 2684
  *   HDAUDIO: HDAUDIO\FUNC_01&VEN_10EC&DEV_0256  → 10EC / 0256
  *   USB:     USB\VID_046D&PID_C52B\...          → 046D / C52B
  * Devuelve null para dispositivos virtuales (ROOT\...) que no tienen firma.

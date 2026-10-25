@@ -5,7 +5,8 @@ import { useBloatwareRules } from './hooks/useBloatwareRules';
 import { useDriverRecommendations } from './hooks/useDriverRecommendations';
 import { useHardwareScan } from './hooks/useHardwareScan';
 import { useRecommendedApps } from './hooks/useRecommendedApps';
-import { DEFAULT_FIXTURE_ID, HARDWARE_FIXTURES } from './scanner/fixtures';
+import { desktop } from './desktop/bridge';
+import { DEFAULT_SOURCE_ID, SCAN_SOURCES } from './scanner';
 import './styles/theme.css';
 
 // Tipos según diagrama de flujo
@@ -16,9 +17,9 @@ const FIXTURE_STORAGE_KEY = 'driwin_fixture';
 function loadSavedFixture(): string {
   try {
     const saved = localStorage.getItem(FIXTURE_STORAGE_KEY);
-    return HARDWARE_FIXTURES.some((fixture) => fixture.id === saved) ? (saved as string) : DEFAULT_FIXTURE_ID;
+    return SCAN_SOURCES.some((source) => source.id === saved) ? (saved as string) : DEFAULT_SOURCE_ID;
   } catch {
-    return DEFAULT_FIXTURE_ID;
+    return DEFAULT_SOURCE_ID;
   }
 }
 
@@ -237,9 +238,15 @@ export default function App() {
         </div>
 
         <div className="window-controls">
-          <button className="win-btn" title="Minimizar">─</button>
-          <button className="win-btn" title="Maximizar">□</button>
-          <button className="win-btn close" title="Cerrar" onClick={() => alert('Cerrando DriWin...')}>✕</button>
+          <button className="win-btn" title="Minimizar" onClick={() => desktop?.minimizeWindow()}>─</button>
+          <button className="win-btn" title="Maximizar" onClick={() => desktop?.toggleMaximizeWindow()}>□</button>
+          <button
+            className="win-btn close"
+            title="Cerrar"
+            onClick={() => (desktop ? desktop.closeWindow() : alert('Cerrando DriWin...'))}
+          >
+            ✕
+          </button>
         </div>
       </div>
 
@@ -253,6 +260,7 @@ export default function App() {
             <div className="column-panel">
               <h2 style={{ borderBottom: '1px solid rgba(0,173,181,0.3)', paddingBottom: '10px' }}>Drivers Actuales</h2>
               {scan.status === 'loading' && <p style={{ opacity: 0.7 }}>Escaneando IDs VEN/DEV del equipo...</p>}
+              {scan.status === 'error' && <ApiStatus status={scan.status} error={scan.error} onRetry={scan.reload} />}
               {scan.status === 'success' && (
                 <div style={{ marginTop: '15px' }}>
                   {scan.data.devices.map(device => (
@@ -413,17 +421,19 @@ export default function App() {
             </div>
 
             <div style={{ backgroundColor: 'var(--surface-color)', padding: '20px', borderRadius: '8px', marginTop: '20px' }}>
-              <p style={{ marginTop: 0 }}><strong>Equipo simulado (Hardware Mock Fixture)</strong></p>
+              <p style={{ marginTop: 0 }}><strong>Origen del escaneo de hardware</strong></p>
               <p style={{ fontSize: '0.8rem', opacity: 0.7 }}>
-                Mientras la app no corre como .exe, el escaneo de hardware usa equipos de prueba.
+                {desktop
+                  ? 'En la app de escritorio se lee el hardware real; los equipos simulados sirven para probar otros escenarios.'
+                  : 'En el navegador no se puede leer el hardware: se usan equipos simulados (Hardware Mock Fixture).'}
               </p>
-              {HARDWARE_FIXTURES.map(fixture => (
-                <div key={fixture.id} className="quiz-option" onClick={() => changeFixture(fixture.id)}>
+              {SCAN_SOURCES.map(source => (
+                <div key={source.id} className="quiz-option" onClick={() => changeFixture(source.id)}>
                   <div>
-                    <strong>{fixture.label}</strong>
-                    <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', opacity: 0.75 }}>{fixture.description}</p>
+                    <strong>{source.label}</strong>
+                    <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', opacity: 0.75 }}>{source.description}</p>
                   </div>
-                  <input type="radio" checked={fixture.id === fixtureId} readOnly />
+                  <input type="radio" checked={source.id === fixtureId} readOnly />
                 </div>
               ))}
             </div>

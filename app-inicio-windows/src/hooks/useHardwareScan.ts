@@ -1,7 +1,7 @@
-import { scanHardware } from '../scanner/mockScanner';
+import { scanDevices } from '../scanner';
 import { useApi } from './useApi';
 
-/** Escanea el hardware del equipo (hoy: fixture simulado). */
-export function useHardwareScan(fixtureId: string) {
-  return useApi(`scan:${fixtureId}`, (signal) => scanHardware(fixtureId, signal));
+/** Escanea el hardware: el equipo real (en el .exe) o un fixture simulado. */
+export function useHardwareScan(sourceId: string) {
+  return useApi(`scan:${sourceId}`, (signal) => scanDevices(sourceId, signal));
 }
