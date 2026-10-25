@@ -28,6 +28,16 @@ describe('blobUrl.service (offloading)', () => {
     expect(resolveBlobDownloadUrl(url, 'drivers')).toBe(url);
   });
 
+  it('acepta sin alterar las URLs reales con espacios codificados y paréntesis', () => {
+    const urls = [
+      'https://driwinstorage.blob.core.windows.net/drivers/NVIDIA%20GeForce%20v555.85%20(DCH).exe',
+      'https://driwinstorage.blob.core.windows.net/drivers/DriverProcesadorGen11%20a%2014%20Graphics.exe',
+    ];
+    for (const url of urls) {
+      expect(resolveBlobDownloadUrl(url, 'drivers')).toBe(url);
+    }
+  });
+
   it('rechaza http:// (tríada segura incompleta)', () => {
     expect(() =>
       resolveBlobDownloadUrl('http://driwinstorage.blob.core.windows.net/drivers/a.exe', 'drivers'),

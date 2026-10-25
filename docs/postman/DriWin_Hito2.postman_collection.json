@@ -208,7 +208,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"component_id\": 4,\n  \"profile_id\": 1,\n  \"os_environment\": \"Win11_x64\",\n  \"edition_name\": \"Realtek HD Audio Gamer Test Driver\",\n  \"version_number\": \"6.0.9999.1\",\n  \"release_date\": \"2026-10-20\",\n  \"download_url\": \"realtek-gamer-test-6.0.9999.1.exe\",\n  \"file_size_mb\": 100,\n  \"silent_install_flags\": \"/S\",\n  \"is_whql_certified\": true\n}",
+              "raw": "{\n  \"component_id\": 4,\n  \"profile_id\": 1,\n  \"os_environment\": \"Win11_x64\",\n  \"edition_name\": \"Intel Graphics Gamer Test Driver\",\n  \"version_number\": \"6.0.9999.1\",\n  \"release_date\": \"2026-10-20\",\n  \"download_url\": \"intel-graphics-gamer-test-6.0.9999.1.exe\",\n  \"file_size_mb\": 100,\n  \"silent_install_flags\": \"/S\",\n  \"is_whql_certified\": true\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": { "raw": "{{baseUrl}}/driver-packages", "host": ["{{baseUrl}}"], "path": ["driver-packages"] },
@@ -294,7 +294,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"version_number\": \"6.0.9999.2\",\n  \"release_date\": \"2026-10-22\",\n  \"download_url\": \"realtek-gamer-test-6.0.9999.2.exe\",\n  \"file_size_mb\": 102\n}",
+              "raw": "{\n  \"version_number\": \"6.0.9999.2\",\n  \"release_date\": \"2026-10-22\",\n  \"download_url\": \"intel-graphics-gamer-test-6.0.9999.2.exe\",\n  \"file_size_mb\": 102\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": { "raw": "{{baseUrl}}/driver-packages/{{driverId}}", "host": ["{{baseUrl}}"], "path": ["driver-packages", "{{driverId}}"] }

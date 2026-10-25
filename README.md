@@ -109,8 +109,8 @@ crear las 8 tablas, 4 índices y la semilla. Verificación rápida:
 
 ```sql
 SELECT COUNT(*) FROM user_profiles;        -- 4
-SELECT COUNT(*) FROM hardware_components;  -- 4
-SELECT COUNT(*) FROM driver_packages;      -- 12
+SELECT COUNT(*) FROM hardware_components;  -- 6
+SELECT COUNT(*) FROM driver_packages;      -- 9
 SELECT COUNT(*) FROM recommended_apps;     -- 20
 SELECT COUNT(*) FROM bloatware_rules;      -- 3
 ```

@@ -188,41 +188,45 @@ INSERT INTO user_profiles (profile_name, optimization_focus) VALUES
 ('Developer', 'Entornos de compilación, virtualización, contenedores y herramientas de desarrollo');
 
 -- ----------------------------------------------------------------------------
--- B.2 Insertar Componentes de Hardware Representativos (IDs 1..4, intactos)
+-- B.2 Insertar Componentes de Hardware (IDs 1..6)
+--     Catálogo alineado con los 9 instaladores REALES subidos a Azure Blob
+--     Storage (contenedor drivers/). Realtek se retiró por no tener instalador.
 -- ----------------------------------------------------------------------------
 INSERT INTO hardware_components (ven_id, dev_id, subsys_id, commercial_name, category) VALUES
 ('1002', '1638', 'GENERIC', 'AMD Radeon(TM) Graphics (Vega Integrated)', 'GPU'),
-('10DE', '2504', 'GENERIC', 'NVIDIA GeForce RTX 3060', 'GPU'),
+('10DE', '2684', 'GENERIC', 'NVIDIA GeForce RTX 30/40 Series', 'GPU'),
 ('14C3', '7961', 'GENERIC', 'MediaTek Wi-Fi 6 MT7921 Wireless LAN Card', 'Network'),
-('10EC', '0256', 'GENERIC', 'Realtek High Definition Audio (ALC256)', 'Audio');
+('8086', 'A780', 'GENERIC', 'Intel Iris Xe / UHD Graphics (Gen 11 a 14)', 'GPU'),
+('8086', '51F0', 'GENERIC', 'Intel Wi-Fi 6/6E Wireless Adapter (Gen 11 a 14)', 'Network'),
+('8087', '0033', 'GENERIC', 'Intel Wireless Bluetooth para Windows 10 y 11', 'Bluetooth');
 
 -- ----------------------------------------------------------------------------
--- B.3 Insertar Paquetes de Controladores (drivers actuales intactos + Developer)
+-- B.3 Insertar Paquetes de Controladores (9 instaladores reales en Azure Blob)
 --     Perfiles: 1=Gamer, 2=Creator, 3=Office, 4=Developer
---     Componentes: 1=AMD Vega, 2=NVIDIA RTX 3060, 3=MediaTek Wi-Fi, 4=Realtek
+--     Componentes: 1=AMD Vega, 2=NVIDIA RTX 30/40, 3=MediaTek Wi-Fi,
+--                  4=Intel Gráficos, 5=Intel Wi-Fi, 6=Intel Bluetooth
+--     Nota: silent_install_flags aún NO verificados contra cada instalador;
+--     deben probarse antes de habilitar la instalación silenciosa real.
 -- ----------------------------------------------------------------------------
 INSERT INTO driver_packages
 (component_id, profile_id, os_environment, edition_name, version_number, release_date, download_url, file_size_mb, silent_install_flags, is_whql_certified)
 VALUES
--- 1. CASO DE USO JAVIER: AMD Radeon (VEN_1002, DEV_1638) -> Gamer vs Creator vs Office vs Developer
-(1, 1, 'Win11_x64', 'AMD Software: Adrenalin Edition', '24.9.1', '2026-09-15', 'https://driwinstorage.blob.core.windows.net/drivers/amd-adrenalin-24.9.1-win11-64bit.exe', 540, '-install', TRUE),
-(1, 2, 'Win11_x64', 'AMD Software: PRO Edition', '24.Q3', '2026-08-20', 'https://driwinstorage.blob.core.windows.net/drivers/amd-pro-edition-24q3-win11-64bit.exe', 510, '-install', TRUE),
-(1, 3, 'Win11_x64', 'AMD Base Display Driver (WHQL Minimal)', '31.0.21912', '2026-07-10', 'https://driwinstorage.blob.core.windows.net/drivers/amd-whql-minimal-1638.cab', 120, 'pnputil /add-driver', TRUE),
-(1, 4, 'Win11_x64', 'AMD Radeon Developer Driver (ROCm Ready)', '24.9.1-ROCm', '2026-09-20', 'https://driwinstorage.blob.core.windows.net/drivers/amd-radeon-developer-rocm-24.9.1-win11.exe', 560, '-install', TRUE),
+-- 1. CASO DE USO JAVIER: AMD Radeon (VEN_1002, DEV_1638) -> Gamer
+(1, 1, 'Win11_x64', 'AMD Software: Adrenalin Edition WHQL', '24.9.1', '2026-09-15', 'https://driwinstorage.blob.core.windows.net/drivers/whql-amd-software-adrenalin-edition-24.9.1-win10-win11-sep-rdna.exe', 726, '-install -noreboot', TRUE),
 
--- 2. NVIDIA RTX 3060 (VEN_10DE, DEV_2504) -> Gamer (Game Ready) vs Creator (Studio) vs Office vs Developer (CUDA)
-(2, 1, 'Win11_x64', 'NVIDIA GeForce Game Ready Driver', '561.09', '2026-09-11', 'https://driwinstorage.blob.core.windows.net/drivers/nvidia-gameready-561.09-win11.exe', 685, '/s /n', TRUE),
-(2, 2, 'Win11_x64', 'NVIDIA Studio Driver', '561.09', '2026-09-11', 'https://driwinstorage.blob.core.windows.net/drivers/nvidia-studio-561.09-win11.exe', 680, '/s /n', TRUE),
-(2, 3, 'Win11_x64', 'NVIDIA Standard DCH Display Driver', '555.85', '2026-05-20', 'https://driwinstorage.blob.core.windows.net/drivers/nvidia-dch-office-555.85.exe', 410, '/s /n', TRUE),
-(2, 4, 'Win11_x64', 'NVIDIA CUDA Developer Driver (Toolkit 12.6 Ready)', '561.09-CUDA', '2026-09-18', 'https://driwinstorage.blob.core.windows.net/drivers/nvidia-cuda-developer-561.09-win11.exe', 700, '/s /n', TRUE),
+-- 2. NVIDIA RTX 30/40 (VEN_10DE, DEV_2684) -> Gamer (Game Ready) vs Creator (Studio) vs Office (DCH 555) vs Developer (DCH 561)
+(2, 1, 'Win11_x64', 'NVIDIA GeForce Game Ready Package Launcher', '561.09', '2026-09-11', 'https://driwinstorage.blob.core.windows.net/drivers/NvidiaDriverGamerPackageLauncher.exe', 945, '-s -noreboot', TRUE),
+(2, 2, 'Win11_x64', 'NVIDIA Studio Driver Creador Package Launcher', '561.09', '2026-09-11', 'https://driwinstorage.blob.core.windows.net/drivers/NvidiaDriverCreadorPackageLauncher.exe', 945, '-s -noreboot', TRUE),
+(2, 3, 'Win11_x64', 'NVIDIA Standard DCH Display Driver', '555.85', '2026-05-20', 'https://driwinstorage.blob.core.windows.net/drivers/NVIDIA%20GeForce%20v555.85%20(DCH).exe', 629, '-s -noreboot', TRUE),
+(2, 4, 'Win11_x64', 'NVIDIA GeForce DCH Developer Driver', '561.09', '2026-09-18', 'https://driwinstorage.blob.core.windows.net/drivers/NVIDIA%20GeForce%20v561.09%20(DCH).exe', 659, '-s -noreboot', TRUE),
 
--- 3. MediaTek Wi-Fi 6 (VEN_14C3, DEV_7961) -> Gamer (Baja latencia) vs Office (Estabilidad) vs Developer (Virtualización)
-(3, 1, 'Win11_x64', 'MediaTek MT7921 Gaming Low-Latency WLAN Driver', '3.4.0.1023', '2026-08-01', 'https://driwinstorage.blob.core.windows.net/drivers/mt7921-gaming-wlan.exe', 45, '/S', TRUE),
-(3, 3, 'Win11_x64', 'MediaTek Wireless LAN WHQL Base Driver', '3.0.1.1300', '2026-03-15', 'https://driwinstorage.blob.core.windows.net/drivers/mt7921-office-whql.cab', 18, 'pnputil /add-driver', TRUE),
-(3, 4, 'Win11_x64', 'MediaTek MT7921 Developer WLAN Driver (Hyper-V / WSL2 Ready)', '3.4.0.1023-dev', '2026-08-28', 'https://driwinstorage.blob.core.windows.net/drivers/mt7921-developer-wlan.exe', 46, '/S', TRUE),
+-- 3. MediaTek Wi-Fi 6 (VEN_14C3, DEV_7961) -> Gamer
+(3, 1, 'Win11_x64', 'MediaTek Wireless LAN WHQL Driver', '3.4.0.1023', '2026-08-01', 'https://driwinstorage.blob.core.windows.net/drivers/MediaTek_WLAN_r2cmw13w.exe', 9, '/S /v/qn', TRUE),
 
--- 4. Realtek Audio (VEN_10EC, DEV_0256) -> Developer (ASIO / depuración de estudio de pruebas)
-(4, 4, 'Win11_x64', 'Realtek HD Audio Developer Driver (ASIO / DCH Debug)', '6.0.9723.1', '2026-06-30', 'https://driwinstorage.blob.core.windows.net/drivers/realtek-alc256-developer-6.0.9723.1.exe', 95, '/S', TRUE);
+-- 4-6. Intel Gen 11-14 (Gráficos VEN_8086/DEV_A780, Wi-Fi VEN_8086/DEV_51F0, Bluetooth VID_8087/PID_0033) -> Office
+(4, 3, 'Win11_x64', 'Intel Processor Graphics Driver (Gen 11-14)', '31.0.101.5522', '2026-10-01', 'https://driwinstorage.blob.core.windows.net/drivers/DriverProcesadorGen11%20a%2014%20Graphics.exe', 745, '--silent --no-reboot', TRUE),
+(5, 3, 'Win11_x64', 'Intel Wireless Wi-Fi Driver (Gen 11-14)', '23.40.0', '2026-10-01', 'https://driwinstorage.blob.core.windows.net/drivers/DriverWifiGen11a14.exe', 72, '-q -norestart', TRUE),
+(6, 3, 'Win11_x64', 'Intel Wireless Bluetooth Driver (Win 10/11)', '23.40.0', '2026-10-01', 'https://driwinstorage.blob.core.windows.net/drivers/DriverBluetoothtWin10y11.exe', 61, '/quiet /norestart', TRUE);
 
 -- ----------------------------------------------------------------------------
 -- B.4 Insertar Aplicaciones Recomendadas (5 por perfil, 20 en total)

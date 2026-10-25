@@ -1075,7 +1075,7 @@ flowchart LR
 | Motor objetivo | **PostgreSQL 16** — Azure Database for PostgreSQL **Flexible Server** (línea 3) |
 | Idempotencia | `DROP TABLE IF EXISTS ... CASCADE` en orden **hijas → padres** (líneas 16-23); ejecutable N veces |
 | Objetos | **8 tablas**, **4 índices**, **5 claves foráneas**, **15 restricciones con nombre**, **8 sentencias `INSERT`** |
-| Semilla | 4 perfiles · 4 componentes · **12 drivers** · **20 apps** · **20 vínculos perfil-app** · 3 reglas de bloatware · 5 planes · 6 usuarios sintéticos |
+| Semilla | 4 perfiles · 6 componentes · **9 drivers (instaladores reales en Azure Blob)** · **20 apps** · **20 vínculos perfil-app** · 3 reglas de bloatware · 5 planes · 6 usuarios sintéticos |
 | Offloading | 20 URLs `.../apps/*` y 12 URLs `.../drivers/*` sobre `https://driwinstorage.blob.core.windows.net` |
 | Pruebas SQL | 9 consultas comentadas (líneas 354-449) = especificación ejecutable de los servicios |
 | ⚠️ No incluye | `CREATE DATABASE`, `CREATE SCHEMA`, roles/permisos, `pg_hba.conf`, `CREATE EXTENSION` (ver H-05 y §6) |
@@ -1098,8 +1098,8 @@ flowchart LR
 | Campo | Tipo | Restricción |
 |---|---|---|
 | `component_id` | `SERIAL` | **PK** |
-| `ven_id` | `VARCHAR(10)` | `NOT NULL` (ej. `1002` AMD, `10DE` NVIDIA, `14C3` MediaTek, `10EC` Realtek) |
-| `dev_id` | `VARCHAR(10)` | `NOT NULL` (ej. `1638`, `2504`, `7961`, `0256`) |
+| `ven_id` | `VARCHAR(10)` | `NOT NULL` (ej. `1002` AMD, `10DE` NVIDIA, `14C3` MediaTek, `8086`/`8087` Intel) |
+| `dev_id` | `VARCHAR(10)` | `NOT NULL` (ej. `1638`, `2684`, `7961`, `A780`, `51F0`, `0033`) |
 | `subsys_id` | `VARCHAR(20)` | `DEFAULT 'GENERIC'` |
 | `commercial_name` | `VARCHAR(150)` | `NOT NULL` |
 | `category` | `VARCHAR(50)` | `NOT NULL` (`GPU`, `Network`, `Audio`) |
@@ -1556,8 +1556,8 @@ psql -d driwin_catalog -v ON_ERROR_STOP=1 -f db/init.sql
 
 ```sql
 SELECT COUNT(*) AS perfiles        FROM user_profiles;         -- 4
-SELECT COUNT(*) AS componentes     FROM hardware_components;   -- 4
-SELECT COUNT(*) AS drivers         FROM driver_packages;       -- 12
+SELECT COUNT(*) AS componentes     FROM hardware_components;   -- 6
+SELECT COUNT(*) AS drivers         FROM driver_packages;       -- 9
 SELECT COUNT(*) AS apps            FROM recommended_apps;      -- 20
 SELECT COUNT(*) AS vinculos        FROM profile_apps;          -- 20
 SELECT COUNT(*) AS reglas          FROM bloatware_rules;       -- 3

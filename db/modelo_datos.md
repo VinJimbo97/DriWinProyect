@@ -141,8 +141,8 @@ erDiagram
 
 ```sql
 SELECT COUNT(*) AS perfiles      FROM user_profiles;        -- 4
-SELECT COUNT(*) AS componentes   FROM hardware_components;  -- 4
-SELECT COUNT(*) AS drivers       FROM driver_packages;      -- 12
+SELECT COUNT(*) AS componentes   FROM hardware_components;  -- 6
+SELECT COUNT(*) AS drivers       FROM driver_packages;      -- 9
 SELECT COUNT(*) AS apps          FROM recommended_apps;     -- 20
 SELECT COUNT(*) AS vinculos      FROM profile_apps;         -- 20
 SELECT COUNT(*) AS reglas        FROM bloatware_rules;      -- 3

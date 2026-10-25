@@ -20,9 +20,10 @@ const envSchema = z
       (value) => (value === '' || value === undefined ? undefined : value),
       z.string().min(16, 'API_KEY_READ_ONLY debe tener al menos 16 caracteres').optional(),
     ),
+    // app://driwin = origen de la app de escritorio (Electron, ver electron/main.ts).
     ALLOWED_ORIGINS: z
       .string()
-      .default('http://localhost:5173,https://driwin.vercel.app'),
+      .default('http://localhost:5173,https://driwin.vercel.app,app://driwin'),
     RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
     RATE_LIMIT_MAX: z.coerce.number().int().positive().default(60),
     LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
