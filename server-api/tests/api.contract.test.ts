@@ -82,7 +82,7 @@ describe('Contrato HTTP /api/v1 (sin base de datos)', () => {
   });
 
   describe('homogeneidad de los módulos nuevos (recommendations / bloatware)', () => {
-    it('POST /recommendations/driver exige credencial de escritura', async () => {
+    it('POST /recommendations/driver exige credencial', async () => {
       const res = await request(app).post('/api/v1/recommendations/driver').send({
         ven_id: '1002',
         dev_id: '1638',

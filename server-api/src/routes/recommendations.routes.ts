@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { RecommendationsController } from '../controllers/recommendations.controller.js';
-import { requireApiKey, requireWriteAccess } from '../middlewares/authenticate.js';
+import { requireApiKey } from '../middlewares/authenticate.js';
 import { validate } from '../middlewares/validate.js';
 import {
   appsRecommendationQuerySchema,
@@ -22,10 +22,12 @@ router.get(
   RecommendationsController.getAppsRecommendation,
 );
 
-// POST /api/v1/recommendations/driver — escritura: exige rol read-write.
+// POST /api/v1/recommendations/driver — es una CONSULTA (no escribe en la BD);
+// usa POST sólo para enviar el hardware detectado en el body. Por eso basta
+// cualquier credencial válida, incluida la de sólo lectura del Front-End.
 router.post(
   '/driver',
-  requireWriteAccess,
+  requireApiKey,
   validate({ body: driverRecommendationBodySchema }),
   RecommendationsController.postDriverRecommendation,
 );
