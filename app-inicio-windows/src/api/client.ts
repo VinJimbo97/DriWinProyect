@@ -74,7 +74,7 @@ async function request<T>(
     throw new ApiRequestError(
       0,
       'NETWORK_ERROR',
-      'No se pudo conectar con el servidor de DriWin. ¿Está corriendo server-api?',
+      'No se pudo conectar con el servidor de DriWin. Revisa tu conexión a internet (en desarrollo: que server-api esté corriendo).',
     );
   }
 
