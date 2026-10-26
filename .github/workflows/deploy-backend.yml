@@ -1,0 +1,74 @@
+# ============================================================================
+# Despliegue continuo del Back-End (server-api) a Azure App Service.
+#
+# Se ejecuta en cada push a main que modifique server-api/ (o este archivo),
+# y también a mano desde la pestaña Actions ("Run workflow").
+#
+#   push ─▶ instalar ─▶ typecheck ─▶ pruebas ─▶ compilar ─▶ empaquetar ─▶ Azure
+#
+# Si una prueba falla, NO se publica: Azure sigue con la versión anterior.
+# Las credenciales viven en Azure (Variables de entorno) y en el secret de
+# GitHub AZURE_WEBAPP_PUBLISH_PROFILE; nunca en este archivo.
+# ============================================================================
+name: Deploy server-api to Azure App Service
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'server-api/**'
+      - '.github/workflows/deploy-backend.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-server-api
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://driwin-api-hsgshffkeydpf2fe.canadacentral-01.azurewebsites.net/api/v1/health
+    defaults:
+      run:
+        working-directory: server-api
+
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v4
+
+      - name: Instalar Node 24 (misma versión que el App Service)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: server-api/package-lock.json
+
+      - name: Instalar dependencias exactas del lockfile
+        run: npm ci
+
+      - name: Verificar tipos
+        run: npm run typecheck
+
+      - name: Pruebas unitarias y de contrato
+        run: npm test
+
+      - name: Compilar TypeScript a dist/
+        run: npm run build
+
+      - name: Quitar dependencias de desarrollo (paquete más liviano)
+        run: npm prune --omit=dev
+
+      - name: Empaquetar dist + dependencias de producción
+        run: zip -qr ../server-api.zip dist node_modules package.json package-lock.json
+
+      - name: Publicar en Azure App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: driwin-api
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: server-api.zip
