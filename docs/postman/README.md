@@ -17,6 +17,21 @@
 | `driverId` | Se actualiza automáticamente al ejecutar el POST de driver |
 | `bloatwareId` | Se actualiza automáticamente al ejecutar el POST de bloatware |
 
+## Ejecutar contra la API publicada en Azure (recomendado para la defensa)
+
+Algunas redes (por ejemplo, la de la universidad) bloquean el puerto 5432 de
+PostgreSQL, por lo que el backend local no alcanza la base de datos. La API
+publicada en Azure App Service sólo usa HTTPS (443) y funciona desde cualquier red.
+
+1. Postman → **Import** → seleccionar también
+   [`DriWin_Azure.postman_environment.json`](./DriWin_Azure.postman_environment.json).
+2. Arriba a la derecha, elegir el entorno **DriWin · Azure (producción)**.
+   Sus variables reemplazan a las de la colección.
+3. Completar `apiKey` (y opcionalmente `readOnlyKey`) **sólo en Postman**.
+   El archivo del repositorio las trae vacías a propósito: nunca se versionan.
+4. El plan gratuito (F1) se suspende sin uso: 2 minutos antes de presentar,
+   ejecutar **01 · Health** hasta recibir `200` (la primera vez puede tardar ~60 s).
+
 ## Orden de ejecución para la defensa
 
 1. **01 · Health** → demuestra que el servicio y PostgreSQL están arriba.

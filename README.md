@@ -59,8 +59,9 @@ DriWinProyect/
 | npm | ≥ 10 | `npm -v` |
 | PostgreSQL (`psql`) | 16 | `psql --version` |
 
-> Para la defensa se recomienda **PostgreSQL local** (Opción B), porque no
-> depende de la red ni de las credenciales de Azure.
+> Para la defensa se usa la **API publicada en Azure** (sección 5.2), que sólo
+> necesita HTTPS. Levantar todo en otro equipo es más simple con **PostgreSQL
+> local** (Opción A): el firewall de la base de Azure sólo admite las IPs del App Service.
 
 ## 🛠️ Instalación paso a paso en un equipo limpio (Hito 2)
 
@@ -69,8 +70,6 @@ DriWinProyect/
 ```powershell
 git clone https://github.com/VinJimbo97/DriWinProyect.git
 cd DriWinProyect
-# Si los cambios del Hito 2 aún no están fusionados en main:
-git checkout feature/backend
 ```
 
 ### 2) Crear la base de datos `driwin_catalog`
@@ -154,7 +153,7 @@ cd server-api
 npm ci                # instala exactamente las versiones del lockfile
 npm run typecheck     # validación de tipos (0 errores)
 npm run build         # compilación a dist/
-npm test              # 56 pruebas unitarias y de contrato
+npm test              # 66 pruebas unitarias y de contrato
 npm run dev           # http://localhost:3000/api/v1/health
 ```
 
@@ -188,6 +187,20 @@ npm run seed:synthetic                              # 100 usuarios, semilla 42
 npm run seed:synthetic -- --count 1000 --seed 7     # otro volumen / semilla
 ```
 
+### 5.2) API publicada en Azure App Service
+
+No hace falta levantar nada localmente para consumir la API: está publicada en
+
+**https://driwin-api-hsgshffkeydpf2fe.canadacentral-01.azurewebsites.net/api/v1/health**
+
+* Se despliega automáticamente con GitHub Actions
+  ([`.github/workflows/deploy-backend.yml`](./.github/workflows/deploy-backend.yml))
+  en cada push a `main` que modifique `server-api/`: instala, verifica tipos,
+  ejecuta las pruebas y sólo publica si todas pasan.
+* Las credenciales viven en las variables de entorno del App Service, nunca en el repositorio.
+* Plan gratuito (F1): tras un rato sin uso se suspende y la primera petición
+  puede tardar ~60 s. Las siguientes responden en menos de 1 s.
+
 ### 6) Levantar el Front-End
 
 ```powershell
@@ -204,6 +217,10 @@ npm run dev           # http://localhost:5173
    * `baseUrl` = `http://localhost:3000/api/v1`
    * `apiKey` = la misma `API_KEY` del `server-api/.env`
    * `readOnlyKey` = opcional, la misma `API_KEY_READ_ONLY`
+
+   Para usar la API de Azure, importar también
+   [`docs/postman/DriWin_Azure.postman_environment.json`](./docs/postman/DriWin_Azure.postman_environment.json)
+   y seleccionar el entorno **DriWin · Azure (producción)** (ver [`docs/postman/README.md`](./docs/postman/README.md)).
 3. Ejecutar las carpetas en orden: **Health → Hardware CRUD → Driver CRUD →
    Bloatware CRUD → Recommendations → Errores**.
 
@@ -232,6 +249,7 @@ unión de apps por perfil y los casos `400/401/403/404/409/422`.
   plantillas `.env.example` sin datos reales.
 * Validación obligatoria con **Zod** de `body`, `params` y `query`.
 * SQL **100 % parametrizado** (`$1..$n`), sin `SELECT *` y sin concatenación.
+* Firewall de PostgreSQL cerrado: sólo acepta las IPs de salida del App Service.
 * TLS obligatorio hacia PostgreSQL (`sslmode=require`) y URLs de descarga
   restringidas a los contenedores `apps/` y `drivers/` de Azure Blob Storage.
 * Logs minimizados: no registran cuerpos, query strings sensibles ni PII
