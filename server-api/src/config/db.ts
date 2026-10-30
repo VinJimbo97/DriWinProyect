@@ -73,28 +73,6 @@ export async function withTransaction<T>(
   }
 }
 
-export interface DatabaseHealth {
-  up: boolean;
-  latencyMs: number;
-}
-
-/** Sonda de vida usada por GET /api/v1/health. */
-export async function checkDatabaseConnection(): Promise<DatabaseHealth> {
-  const startedAt = process.hrtime.bigint();
-  let client: pg.PoolClient | undefined;
-
-  try {
-    client = await pool.connect();
-    await client.query('SELECT 1 AS alive');
-    const latencyMs = Number(process.hrtime.bigint() - startedAt) / 1_000_000;
-    return { up: true, latencyMs: Math.round(latencyMs * 100) / 100 };
-  } catch {
-    return { up: false, latencyMs: -1 };
-  } finally {
-    client?.release();
-  }
-}
-
 /** Cierre ordenado del pool (graceful shutdown). */
 export async function closePool(): Promise<void> {
   await pool.end();
