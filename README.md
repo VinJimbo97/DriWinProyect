@@ -229,7 +229,7 @@ unión de apps por perfil y los casos `400/401/403/404/409/422`.
 
 ## 📡 Contrato y documentación del Hito 2
 
-* 📑 **[Documento Técnico Back-End (PDF)](./docs/Hito2/Documento_Tecnico_Backend_Hito2_DriWin.pdf)**
+* 📑 **[Documento Técnico Back-End (PDF)](./docs/Hito2/DriWin_Documento_Tecnico_Hito2.pdf)**
 * 📘 **[Contrato completo de la API y auditoría técnica](./docs/Hito2/backendInfo.md)**
 * 🧾 **[Consideraciones oficiales y rúbrica del Hito 2](./docs/Hito2/consideraciones_oficiales_del_hito_2.md)**
 * 🗄️ **[Script de base de datos](./db/init.sql)** · **[Modelo de datos](./db/modelo_datos.md)**
