@@ -8,6 +8,12 @@ import { contextBridge, ipcRenderer } from 'electron';
  */
 contextBridge.exposeInMainWorld('driwin', {
   scanHardware: () => ipcRenderer.invoke('hardware:scan'),
+  installDriver: (request: unknown) => ipcRenderer.invoke('driver:install', request),
+  onDriverInstallProgress: (listener: (progress: unknown) => void) => {
+    const handler = (_event: unknown, progress: unknown) => listener(progress);
+    ipcRenderer.on('driver:progress', handler);
+    return () => ipcRenderer.removeListener('driver:progress', handler);
+  },
   minimizeWindow: () => ipcRenderer.send('window:minimize'),
   toggleMaximizeWindow: () => ipcRenderer.send('window:toggle-maximize'),
   closeWindow: () => ipcRenderer.send('window:close'),

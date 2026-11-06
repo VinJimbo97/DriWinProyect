@@ -40,6 +40,8 @@ export interface DriverRecommendation {
     file_size_mb: number;
     silent_install_flags: string;
     is_whql_certified: boolean;
+    /** Huella del instalador. Sin ella, la app no lo instala. */
+    sha256: string | null;
   };
   alternatives: {
     profile_name: string;

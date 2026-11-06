@@ -1,7 +1,9 @@
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { app, BrowserWindow, ipcMain, net, protocol, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
+import { installDriver } from './driverInstaller.js';
 import { scanHardware } from './hardwareScanner.js';
+import type { DriverInstallRequest } from './installerPolicy.js';
 
 /**
  * Proceso PRINCIPAL de Electron: crea la ventana y es el único con acceso a
@@ -63,12 +65,35 @@ function isTrustedSender(event: IpcMainEvent | IpcMainInvokeEvent): boolean {
   return isDev && url.origin === DEV_SERVER_URL;
 }
 
+/** Un instalador a la vez: Windows no admite instalar varios drivers en paralelo. */
+let installInProgress = false;
+
 function registerIpcHandlers(): void {
   ipcMain.handle('hardware:scan', (event) => {
     if (!isTrustedSender(event)) {
       throw new Error('Origen no autorizado');
     }
     return scanHardware();
+  });
+
+  ipcMain.handle('driver:install', async (event, request: DriverInstallRequest) => {
+    if (!isTrustedSender(event)) {
+      throw new Error('Origen no autorizado');
+    }
+    if (installInProgress) {
+      throw new Error('Ya hay una instalación en curso');
+    }
+    installInProgress = true;
+    try {
+      const workDir = path.join(app.getPath('userData'), 'instaladores');
+      return await installDriver(request, workDir, (progress) => {
+        if (!event.sender.isDestroyed()) {
+          event.sender.send('driver:progress', progress);
+        }
+      });
+    } finally {
+      installInProgress = false;
+    }
   });
 
   ipcMain.on('window:minimize', (event) => {
