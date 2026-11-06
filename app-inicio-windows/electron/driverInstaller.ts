@@ -14,12 +14,15 @@ const execFileAsync = promisify(execFile);
 /** El instalador más grande del catálogo pesa cerca de 1 GB. */
 const MAX_DOWNLOAD_BYTES = 2 * 1024 * 1024 * 1024;
 const DOWNLOAD_STALL_MS = 60_000;
-const INSTALL_TIMEOUT_MS = 30 * 60_000;
+/** Holgado porque la persona puede tardar en leer los términos del asistente. */
+const INSTALL_TIMEOUT_MS = 2 * 60 * 60_000;
 
 const EXIT_OK = 0;
 const EXIT_REBOOT_REQUIRED = 3010;
 const EXIT_REBOOT_INITIATED = 1641;
 const EXIT_UAC_DENIED = 1223;
+/** Código estándar de Windows Installer cuando la persona cancela el asistente. */
+const EXIT_USER_CANCELLED = 1602;
 
 export type InstallStage = 'downloading' | 'verifying' | 'installing';
 export type InstallProgress = { driverId: number; stage: InstallStage; percent: number | null };
@@ -27,11 +30,11 @@ export type InstallProgress = { driverId: number; stage: InstallStage; percent: 
 export type InstallFailureCode =
   | 'NOT_VERIFIED'
   | 'INVALID_SOURCE'
-  | 'INVALID_FLAGS'
   | 'DOWNLOAD_FAILED'
   | 'HASH_MISMATCH'
   | 'BAD_SIGNATURE'
   | 'UAC_DENIED'
+  | 'USER_CANCELLED'
   | 'INSTALLER_FAILED';
 
 export type DriverInstallResult =
@@ -41,12 +44,12 @@ export type DriverInstallResult =
 const FAILURE_MESSAGES: Record<InstallFailureCode, string> = {
   NOT_VERIFIED: 'Este driver aún no tiene una huella de seguridad registrada, así que no se instalará.',
   INVALID_SOURCE: 'El origen de este driver no está autorizado.',
-  INVALID_FLAGS: 'Los parámetros de instalación de este driver no son válidos.',
   DOWNLOAD_FAILED: 'No se pudo descargar el driver. Revisa tu conexión e inténtalo de nuevo.',
   HASH_MISMATCH: 'El archivo descargado no coincide con el original. Se eliminó sin instalarlo.',
   BAD_SIGNATURE: 'La firma digital del instalador no es válida. Se eliminó sin instalarlo.',
-  UAC_DENIED: 'Se necesita tu permiso de administrador para instalar el driver.',
-  INSTALLER_FAILED: 'El instalador del fabricante terminó con un error.',
+  UAC_DENIED: 'Cancelaste el permiso de administrador, así que no se instaló el driver.',
+  USER_CANCELLED: 'Cancelaste el instalador, así que no se instaló el driver.',
+  INSTALLER_FAILED: 'El instalador terminó sin confirmar la instalación. Si lo cancelaste, puedes reintentar cuando quieras.',
 };
 
 class InstallFailure extends Error {
@@ -146,12 +149,20 @@ export async function verifySignature(filePath: string): Promise<void> {
 
 /**
  * La app corre sin privilegios y sólo este instalador pide administrador (UAC).
- * Windows avisa la cancelación con el error 1223, sea cual sea el idioma.
+ * Se abre sin argumentos: la persona ve sus ventanas y acepta sus términos.
+ * Se usa Process.Start porque Start-Process oculta el error nativo de Windows:
+ * al negar el permiso solo así llega el 1223, sea cual sea el idioma.
  * Un código de salida ausente nunca se trata como éxito (259 = sin resultado).
  */
 const ELEVATE_SCRIPT = `
 try {
-  $p = Start-Process -FilePath $env:DRIWIN_FILE -ArgumentList $env:DRIWIN_ARGS -Verb RunAs -Wait -PassThru
+  $info = New-Object System.Diagnostics.ProcessStartInfo
+  $info.FileName = $env:DRIWIN_FILE
+  $info.UseShellExecute = $true
+  $info.Verb = 'runas'
+  $p = [System.Diagnostics.Process]::Start($info)
+  if ($null -eq $p) { exit 259 }
+  $p.WaitForExit()
   if ($null -eq $p.ExitCode) { exit 259 }
   exit $p.ExitCode
 } catch {
@@ -164,7 +175,7 @@ try {
 }
 `;
 
-export async function runElevated(filePath: string, args: string): Promise<number> {
+export async function runElevated(filePath: string): Promise<number> {
   try {
     await execFileAsync(
       'powershell.exe',
@@ -172,7 +183,7 @@ export async function runElevated(filePath: string, args: string): Promise<numbe
       {
         timeout: INSTALL_TIMEOUT_MS,
         windowsHide: true,
-        env: { ...process.env, DRIWIN_FILE: filePath, DRIWIN_ARGS: args },
+        env: { ...process.env, DRIWIN_FILE: filePath },
       },
     );
     return EXIT_OK;
@@ -218,7 +229,7 @@ export async function installDriver(
     await steps.verify(filePath);
 
     onProgress({ driverId, stage: 'installing', percent: null });
-    const exitCode = await steps.run(filePath, request.silentFlags);
+    const exitCode = await steps.run(filePath);
 
     if (exitCode === EXIT_OK) {
       return { ok: true, rebootRequired: false };
@@ -228,6 +239,9 @@ export async function installDriver(
     }
     if (exitCode === EXIT_UAC_DENIED) {
       return { ok: false, code: 'UAC_DENIED', message: FAILURE_MESSAGES.UAC_DENIED };
+    }
+    if (exitCode === EXIT_USER_CANCELLED) {
+      return { ok: false, code: 'USER_CANCELLED', message: FAILURE_MESSAGES.USER_CANCELLED };
     }
     return {
       ok: false,

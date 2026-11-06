@@ -281,19 +281,18 @@ export default function App() {
                     const updateState = driverUpdateState(item.device.ven_id, item.device.current_version, recommendation.version_number);
                     const install = driverInstall.states[recommendation.driver_id];
                     const working = install !== undefined && ['downloading', 'verifying', 'installing'].includes(install.stage);
-                    const done = install?.stage === 'done';
 
                     let buttonLabel = 'Instalar';
                     if (updateState === 'current') {
                       buttonLabel = '✓ Al día';
                     } else if (install?.stage === 'done') {
-                      buttonLabel = '✓ Instalado';
+                      buttonLabel = 'Instalar de nuevo';
                     } else if (install?.stage === 'downloading') {
                       buttonLabel = install.percent === null ? 'Descargando...' : `Descargando ${install.percent}%`;
                     } else if (install?.stage === 'verifying') {
                       buttonLabel = 'Verificando...';
                     } else if (install?.stage === 'installing') {
-                      buttonLabel = 'Instalando...';
+                      buttonLabel = 'Instalador abierto...';
                     } else if (install?.stage === 'error') {
                       buttonLabel = 'Reintentar';
                     }
@@ -301,9 +300,13 @@ export default function App() {
                     let note: string | null = null;
                     if (install?.stage === 'error') {
                       note = install.message;
-                    } else if (install?.stage === 'done' && install.rebootRequired) {
-                      note = 'Reinicia el equipo para terminar la instalación.';
-                    } else if (updateState !== 'current' && !done && !working) {
+                    } else if (install?.stage === 'installing') {
+                      note = 'Acepta el permiso de Windows y sigue los pasos en la ventana del instalador.';
+                    } else if (install?.stage === 'done') {
+                      note = install.rebootRequired
+                        ? 'Reinicia el equipo para terminar la instalación.'
+                        : 'El instalador terminó. Si lo cancelaste, tu driver sigue igual.';
+                    } else if (updateState !== 'current' && !working) {
                       if (!canInstallDrivers) {
                         note = 'La instalación solo está disponible en la app de escritorio, con el equipo real.';
                       } else if (!recommendation.sha256) {
@@ -314,7 +317,7 @@ export default function App() {
                     }
 
                     const installDisabled =
-                      updateState === 'current' || done || working || driverInstall.busy || !canInstallDrivers || !recommendation.sha256;
+                      updateState === 'current' || working || driverInstall.busy || !canInstallDrivers || !recommendation.sha256;
 
                     return (
                       <div key={item.device.instance_id} className="driver-row">
@@ -333,7 +336,7 @@ export default function App() {
                           )}
                         </div>
                         <button
-                          className={`btn-action ${updateState === 'current' || done ? 'installed' : ''}`}
+                          className={`btn-action ${updateState === 'current' ? 'installed' : ''}`}
                           onClick={() => void driverInstall.install(recommendation)}
                           disabled={installDisabled}
                         >

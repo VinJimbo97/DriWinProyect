@@ -36,7 +36,6 @@ export function useDriverInstall() {
         driverId,
         downloadUrl: recommendation.download_url,
         sha256: recommendation.sha256,
-        silentFlags: recommendation.silent_install_flags,
       });
       next = result.ok
         ? { stage: 'done', rebootRequired: result.rebootRequired }
