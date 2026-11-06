@@ -1,0 +1,60 @@
+# ============================================================================
+# Verificación de cada Pull Request hacia main.
+#
+#   server-api          ─▶ instalar ─▶ typecheck ─▶ pruebas ─▶ compilar
+#   app-inicio-windows  ─▶ instalar ─▶ lint ─▶ compilar Electron ─▶ compilar front
+#
+# No publica nada ni usa credenciales: el despliegue vive en deploy-backend.yml.
+# ============================================================================
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: server-api
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server-api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: server-api/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  frontend:
+    name: app-inicio-windows
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app-inicio-windows
+    env:
+      # Aquí no se ejecuta Electron: basta con compilar su código.
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: app-inicio-windows/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run electron:compile
+      - run: npm run build
