@@ -21,6 +21,7 @@ export interface DriverPackageDto {
   file_size_mb: number;
   silent_install_flags: string;
   is_whql_certified: boolean;
+  sha256: string | null;
   created_at: string;
 }
 
@@ -41,6 +42,7 @@ export interface DriverRow {
   file_size_mb: number;
   silent_install_flags: string;
   is_whql_certified: boolean;
+  sha256: string | null;
   created_at: Date;
   total_count?: number;
 }
@@ -63,6 +65,7 @@ export interface CreateDriverInput {
   file_size_mb: number;
   silent_install_flags?: string;
   is_whql_certified?: boolean;
+  sha256?: string;
 }
 
 /** PUT/PATCH: todos los campos opcionales, pero al menos uno obligatorio. */

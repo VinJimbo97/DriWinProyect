@@ -31,6 +31,7 @@ const DRIVER_SELECT = `
          d.file_size_mb,
          d.silent_install_flags,
          d.is_whql_certified,
+         d.sha256,
          d.created_at
   FROM driver_packages d
   INNER JOIN hardware_components h ON h.component_id = d.component_id
@@ -133,8 +134,8 @@ export async function insert(input: CreateDriverInput): Promise<DriverRow> {
       `
         INSERT INTO driver_packages
           (component_id, profile_id, os_environment, edition_name, version_number,
-           release_date, download_url, file_size_mb, silent_install_flags, is_whql_certified)
-        VALUES ($1, $2, $3, $4, $5, $6::date, $7, $8, COALESCE($9, '/S'), COALESCE($10, TRUE))
+           release_date, download_url, file_size_mb, silent_install_flags, is_whql_certified, sha256)
+        VALUES ($1, $2, $3, $4, $5, $6::date, $7, $8, COALESCE($9, '/S'), COALESCE($10, TRUE), $11)
         RETURNING driver_id
       `,
       [
@@ -148,6 +149,7 @@ export async function insert(input: CreateDriverInput): Promise<DriverRow> {
         input.file_size_mb,
         input.silent_install_flags ?? null,
         input.is_whql_certified ?? null,
+        input.sha256 ?? null,
       ],
     );
 
@@ -181,7 +183,8 @@ export async function update(
             download_url         = COALESCE($8::text, download_url),
             file_size_mb         = COALESCE($9::int, file_size_mb),
             silent_install_flags = COALESCE($10::text, silent_install_flags),
-            is_whql_certified    = COALESCE($11::boolean, is_whql_certified)
+            is_whql_certified    = COALESCE($11::boolean, is_whql_certified),
+            sha256               = COALESCE($12::text, sha256)
         WHERE driver_id = $1
         RETURNING driver_id
       `,
@@ -197,6 +200,7 @@ export async function update(
         input.file_size_mb ?? null,
         input.silent_install_flags ?? null,
         input.is_whql_certified ?? null,
+        input.sha256 ?? null,
       ],
     );
 

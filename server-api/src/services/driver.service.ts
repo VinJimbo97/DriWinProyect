@@ -41,6 +41,7 @@ function toDto(row: DriverRow): DriverPackageDto {
     file_size_mb: row.file_size_mb,
     silent_install_flags: row.silent_install_flags,
     is_whql_certified: row.is_whql_certified,
+    sha256: row.sha256,
     created_at: new Date(row.created_at).toISOString(),
   };
 }
@@ -101,6 +102,7 @@ export async function createDriver(input: CreateDriverBody): Promise<DriverPacka
       file_size_mb: input.file_size_mb,
       silent_install_flags: input.silent_install_flags,
       is_whql_certified: input.is_whql_certified,
+      sha256: input.sha256,
     });
     return toDto(row);
   } catch (error) {

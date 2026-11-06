@@ -80,6 +80,12 @@ export const createDriverSchema = z.object({
   is_whql_certified: z
     .boolean({ invalid_type_error: 'is_whql_certified debe ser true o false' })
     .optional(),
+  sha256: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .regex(/^[a-f0-9]{64}$/, 'sha256 debe tener 64 caracteres hexadecimales')
+    .optional(),
 });
 
 /** PUT /api/v1/driver-packages/:id */

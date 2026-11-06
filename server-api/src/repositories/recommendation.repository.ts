@@ -10,6 +10,7 @@ export interface OptimalDriverRow {
   file_size_mb: number;
   silent_install_flags: string;
   is_whql_certified: boolean;
+  sha256: string | null;
   os_environment: string;
   profile_name: string;
   component_id: number;
@@ -40,7 +41,7 @@ export class RecommendationRepository {
         d.driver_id, d.edition_name, d.version_number,
         to_char(d.release_date, 'YYYY-MM-DD') AS release_date,
         d.download_url, d.file_size_mb, d.silent_install_flags,
-        d.is_whql_certified, d.os_environment,
+        d.is_whql_certified, d.sha256, d.os_environment,
         p.profile_name,
         h.component_id, h.ven_id, h.dev_id, h.commercial_name, h.category
       FROM driver_packages d

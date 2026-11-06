@@ -2,7 +2,7 @@
 # Verificación de cada Pull Request hacia main.
 #
 #   server-api          ─▶ instalar ─▶ typecheck ─▶ pruebas ─▶ compilar
-#   app-inicio-windows  ─▶ instalar ─▶ lint ─▶ compilar Electron ─▶ compilar front
+#   app-inicio-windows  ─▶ instalar ─▶ lint ─▶ pruebas ─▶ compilar front
 #
 # No publica nada ni usa credenciales: el despliegue vive en deploy-backend.yml.
 # ============================================================================
@@ -56,5 +56,5 @@ jobs:
           cache-dependency-path: app-inicio-windows/package-lock.json
       - run: npm ci
       - run: npm run lint
-      - run: npm run electron:compile
+      - run: npm test
       - run: npm run build

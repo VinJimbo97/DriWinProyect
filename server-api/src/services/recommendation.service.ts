@@ -23,6 +23,7 @@ export interface DriverRecommendationResult {
     file_size_mb: number;
     silent_install_flags: string;
     is_whql_certified: boolean;
+    sha256: string | null;
   };
   alternatives: Array<{
     profile_name: string;
@@ -125,6 +126,7 @@ export class RecommendationService {
         file_size_mb: Number(optimal.file_size_mb),
         silent_install_flags: optimal.silent_install_flags,
         is_whql_certified: optimal.is_whql_certified,
+        sha256: optimal.sha256,
       },
       alternatives: rest.map((row) => ({
         profile_name: row.profile_name,
