@@ -2,11 +2,13 @@ import { useState } from 'react';
 import type { ApiRequestError } from './api/client';
 import type { ProfileName } from './api/types';
 import { useBloatwareRules } from './hooks/useBloatwareRules';
+import { useDriverInstall } from './hooks/useDriverInstall';
 import { useDriverRecommendations } from './hooks/useDriverRecommendations';
 import { useHardwareScan } from './hooks/useHardwareScan';
 import { useRecommendedApps } from './hooks/useRecommendedApps';
 import { desktop } from './desktop/bridge';
-import { DEFAULT_SOURCE_ID, SCAN_SOURCES } from './scanner';
+import { DEFAULT_SOURCE_ID, NATIVE_SOURCE_ID, SCAN_SOURCES } from './scanner';
+import { driverUpdateState } from './scanner/driverVersion';
 import './styles/theme.css';
 
 // Tipos según diagrama de flujo
@@ -81,12 +83,11 @@ function ApiStatus({ status, error, onRetry }: { status: string; error: ApiReque
 }
 
 export default function App() {
-  // Estados de arranque y seguridad (UAC y Onboarding)
-  const [hasAdminRights, setHasAdminRights] = useState<boolean | null>(null);
+  // Estado de arranque (Onboarding)
   // Sesión previa guardada en localStorage (null = usuario nuevo)
   const [savedProfiles] = useState<ProfileName[] | null>(loadSavedProfiles);
   const isNewUser = savedProfiles === null;
-  const [showQuiz, setShowQuiz] = useState<boolean>(false);
+  const [showQuiz, setShowQuiz] = useState<boolean>(isNewUser);
 
   // Perfiles marcados en el cuestionario (borrador) y perfiles ya confirmados
   const [selectedProfiles, setSelectedProfiles] = useState<ProfileName[]>(savedProfiles ?? []);
@@ -108,18 +109,12 @@ export default function App() {
   const bloatware = useBloatwareRules();
   const apps = useRecommendedApps(activeProfiles);
 
-  // Drivers "instalados" en esta sesión (por instance_id del dispositivo)
-  const [installedDrivers, setInstalledDrivers] = useState<Set<string>>(new Set());
+  // Instalación real de drivers: sólo en la app de escritorio y sobre el equipo real
+  const driverInstall = useDriverInstall();
+  const canInstallDrivers = desktop !== undefined && fixtureId === NATIVE_SOURCE_ID;
 
   // Reglas de bloatware que el usuario marcó para eliminar (por bloatware_id)
   const [selectedBloatware, setSelectedBloatware] = useState<Set<number>>(new Set());
-
-  const handleGrantUAC = () => {
-    setHasAdminRights(true);
-    if (isNewUser) {
-      setShowQuiz(true);
-    }
-  };
 
   const handleProfileToggle = (profile: ProfileName) => {
     if (selectedProfiles.includes(profile)) {
@@ -139,13 +134,8 @@ export default function App() {
     setShowQuiz(false);
   };
 
-  const installDriver = (instanceId: string) => {
-    setInstalledDrivers(prev => new Set(prev).add(instanceId));
-  };
-
   const changeFixture = (id: string) => {
     setFixtureId(id);
-    setInstalledDrivers(new Set());
     try {
       localStorage.setItem(FIXTURE_STORAGE_KEY, id);
     } catch {
@@ -168,27 +158,7 @@ export default function App() {
   return (
     <div className="window-container">
       
-      {/* 1. Modal UAC (Control de Cuentas de Usuario) */}
-      {hasAdminRights === null && (
-        <div className="overlay-modal">
-          <div className="modal-box" style={{ textAlign: 'center' }}>
-            <h2 style={{ color: 'var(--primary-color)', margin: '0 0 10px 0' }}>Intervención de Seguridad (UAC)</h2>
-            <p style={{ opacity: 0.85, lineHeight: '1.6' }}>
-              DriWin requiere privilegios de administrador para comunicarse con los controladores de hardware e interactuar con el sistema operativo sin restricciones.
-            </p>
-            <div style={{ display: 'flex', gap: '15px', justifyContent: 'center', marginTop: '25px' }}>
-              <button className="btn-action" style={{ background: 'var(--primary-color)', color: '#222831' }} onClick={handleGrantUAC}>
-                Conceder Permisos de Administrador
-              </button>
-              <button className="btn-action" onClick={() => alert('La aplicación no puede continuar sin permisos.')}>
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 2. Modal Onboarding: Cuestionario de Perfil con Shell en Paralelo */}
+      {/* Modal Onboarding: Cuestionario de Perfil con Shell en Paralelo */}
       {showQuiz && (
         <div className="overlay-modal">
           <div className="modal-box">
@@ -308,8 +278,43 @@ export default function App() {
                     }
 
                     const { recommendation } = item.recommendation;
-                    const upToDate = recommendation.version_number === item.device.current_version;
-                    const installed = upToDate || installedDrivers.has(item.device.instance_id);
+                    const updateState = driverUpdateState(item.device.ven_id, item.device.current_version, recommendation.version_number);
+                    const install = driverInstall.states[recommendation.driver_id];
+                    const working = install !== undefined && ['downloading', 'verifying', 'installing'].includes(install.stage);
+                    const done = install?.stage === 'done';
+
+                    let buttonLabel = 'Instalar';
+                    if (updateState === 'current') {
+                      buttonLabel = '✓ Al día';
+                    } else if (install?.stage === 'done') {
+                      buttonLabel = '✓ Instalado';
+                    } else if (install?.stage === 'downloading') {
+                      buttonLabel = install.percent === null ? 'Descargando...' : `Descargando ${install.percent}%`;
+                    } else if (install?.stage === 'verifying') {
+                      buttonLabel = 'Verificando...';
+                    } else if (install?.stage === 'installing') {
+                      buttonLabel = 'Instalando...';
+                    } else if (install?.stage === 'error') {
+                      buttonLabel = 'Reintentar';
+                    }
+
+                    let note: string | null = null;
+                    if (install?.stage === 'error') {
+                      note = install.message;
+                    } else if (install?.stage === 'done' && install.rebootRequired) {
+                      note = 'Reinicia el equipo para terminar la instalación.';
+                    } else if (updateState !== 'current' && !done && !working) {
+                      if (!canInstallDrivers) {
+                        note = 'La instalación solo está disponible en la app de escritorio, con el equipo real.';
+                      } else if (!recommendation.sha256) {
+                        note = 'Pendiente de verificación de seguridad.';
+                      } else if (updateState === 'unknown') {
+                        note = 'No se pudo comparar con tu versión instalada; revísala antes de instalar.';
+                      }
+                    }
+
+                    const installDisabled =
+                      updateState === 'current' || done || working || driverInstall.busy || !canInstallDrivers || !recommendation.sha256;
 
                     return (
                       <div key={item.device.instance_id} className="driver-row">
@@ -321,13 +326,18 @@ export default function App() {
                           <div style={{ fontSize: '0.7rem', opacity: 0.6 }}>
                             Perfil {recommendation.profile_name} · {recommendation.file_size_mb} MB{recommendation.is_whql_certified ? ' · WHQL' : ''}
                           </div>
+                          {note && (
+                            <div style={{ fontSize: '0.75rem', marginTop: '4px', color: install?.stage === 'error' ? 'var(--danger-color)' : undefined, opacity: install?.stage === 'error' ? 1 : 0.75 }}>
+                              {note}
+                            </div>
+                          )}
                         </div>
                         <button
-                          className={`btn-action ${installed ? 'installed' : ''}`}
-                          onClick={() => installDriver(item.device.instance_id)}
-                          disabled={installed}
+                          className={`btn-action ${updateState === 'current' || done ? 'installed' : ''}`}
+                          onClick={() => void driverInstall.install(recommendation)}
+                          disabled={installDisabled}
                         >
-                          {upToDate ? '✓ Al día' : installed ? '✓ Instalado' : 'Install'}
+                          {buttonLabel}
                         </button>
                       </div>
                     );
@@ -414,7 +424,7 @@ export default function App() {
             <h2>Configuración y Perfil</h2>
             <div style={{ backgroundColor: 'var(--surface-color)', padding: '20px', borderRadius: '8px', marginTop: '20px' }}>
               <p><strong>Perfil activo:</strong> {activeProfileTitle}</p>
-              <p><strong>Permisos de Administrador:</strong> {hasAdminRights ? 'Activos (Elevados)' : 'Inactivos'}</p>
+              <p><strong>Permisos de Administrador:</strong> se piden solo al instalar, con el aviso de Windows.</p>
               <button className="btn-action" onClick={() => setShowQuiz(true)} style={{ marginTop: '10px' }}>
                 Reconfigurar Cuestionario Inicial
               </button>
