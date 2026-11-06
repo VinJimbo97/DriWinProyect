@@ -17,6 +17,7 @@ const optimalRow = {
   file_size_mb: 540,
   silent_install_flags: '-install',
   is_whql_certified: true,
+  sha256: 'a'.repeat(64),
   os_environment: 'Win11_x64',
   profile_name: 'Gamer',
   component_id: 1,
