@@ -7,14 +7,13 @@ import os from 'node:os';
 import path from 'node:path';
 import { after, before, describe, it } from 'node:test';
 import { downloadAndVerify, installDriver, type InstallerSteps, type InstallProgress } from './driverInstaller.js';
-import { areFlagsAllowed, isAllowedDriverUrl, validateInstallRequest, type DriverInstallRequest } from './installerPolicy.js';
+import { isAllowedDriverUrl, validateInstallRequest, type DriverInstallRequest } from './installerPolicy.js';
 
 const VALID_SHA = 'a'.repeat(64);
 const validRequest: DriverInstallRequest = {
   driverId: 6,
   downloadUrl: 'https://driwinstorage.blob.core.windows.net/drivers/MediaTek_WLAN_r2cmw13w.exe',
   sha256: VALID_SHA,
-  silentFlags: '/S /v/qn',
 };
 
 describe('política de instalación', () => {
@@ -39,18 +38,6 @@ describe('política de instalación', () => {
   ] as const) {
     it(`rechaza URL: ${name}`, () => assert.equal(isAllowedDriverUrl(url), false));
   }
-
-  it('acepta los parámetros silenciosos del catálogo', () => {
-    for (const flags of ['/S', '/S /v/qn', '-q -norestart', '--silent --no-reboot', '/quiet /norestart', '-install']) {
-      assert.equal(areFlagsAllowed(flags), true, flags);
-    }
-  });
-
-  it('rechaza parámetros que permitirían inyectar comandos', () => {
-    for (const flags of ['', '/S & calc', '/S; calc', '/S | calc', '$(calc)', '"/S"', '/S  /q', 'calc', `/${'a'.repeat(100)}`]) {
-      assert.equal(areFlagsAllowed(flags), false, flags);
-    }
-  });
 
   it('exige una huella SHA-256 válida', () => {
     assert.equal(validateInstallRequest({ ...validRequest, sha256: null }), 'NOT_VERIFIED');
@@ -144,6 +131,20 @@ describe('flujo de instalación', () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
+  it('abre el instalador sin argumentos, para que muestre sus ventanas y términos', async () => {
+    const dir = makeDir();
+    let received: unknown[] = [];
+    const requestWithFlags = { ...validRequest, silentFlags: '/S /v/qn' };
+    await installDriver(requestWithFlags, dir, () => {}, fakeSteps({
+      run: async (...args: unknown[]) => {
+        received = args;
+        return 0;
+      },
+    }));
+    assert.deepEqual(received, [path.join(dir, 'driver-6.exe')]);
+    rmSync(dir, { recursive: true, force: true });
+  });
+
   it('no descarga nada si la solicitud no pasa la política', async () => {
     const dir = makeDir();
     let downloaded = false;
@@ -180,6 +181,7 @@ describe('flujo de instalación', () => {
       [3010, { ok: true, rebootRequired: true }],
       [1641, { ok: true, rebootRequired: true }],
       [1223, 'UAC_DENIED'],
+      [1602, 'USER_CANCELLED'],
       [5, 'INSTALLER_FAILED'],
       [259, 'INSTALLER_FAILED'],
     ];

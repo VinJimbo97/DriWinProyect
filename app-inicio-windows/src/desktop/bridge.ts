@@ -9,7 +9,6 @@ export interface DriverInstallRequest {
   driverId: number;
   downloadUrl: string;
   sha256: string | null;
-  silentFlags: string;
 }
 
 export type DriverInstallResult =
