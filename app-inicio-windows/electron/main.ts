@@ -1,6 +1,8 @@
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { app, BrowserWindow, ipcMain, net, protocol, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
+import { detectPackages, removePackages } from './bloatwareCleaner.js';
+import { splitRequestedPackages } from './bloatwarePolicy.js';
 import { installDriver } from './driverInstaller.js';
 import { scanHardware } from './hardwareScanner.js';
 import type { DriverInstallRequest } from './installerPolicy.js';
@@ -68,6 +70,9 @@ function isTrustedSender(event: IpcMainEvent | IpcMainInvokeEvent): boolean {
 /** Un instalador a la vez: Windows no admite instalar varios drivers en paralelo. */
 let installInProgress = false;
 
+/** Una limpieza de bloatware a la vez. */
+let cleanupInProgress = false;
+
 function registerIpcHandlers(): void {
   ipcMain.handle('hardware:scan', (event) => {
     if (!isTrustedSender(event)) {
@@ -93,6 +98,38 @@ function registerIpcHandlers(): void {
       });
     } finally {
       installInProgress = false;
+    }
+  });
+
+  // Detección: lo que no está en la lista permitida se informa como no soportado.
+  ipcMain.handle('bloatware:detect', async (event, packageNames: unknown) => {
+    if (!isTrustedSender(event)) {
+      throw new Error('Origen no autorizado');
+    }
+    const split = splitRequestedPackages(packageNames);
+    if (!split) {
+      throw new Error('Petición de detección inválida');
+    }
+    return { installed: await detectPackages(split.allowed), unsupported: split.rejected };
+  });
+
+  // Eliminación: si UN solo paquete no está permitido, no se elimina nada.
+  ipcMain.handle('bloatware:remove', async (event, packageNames: unknown) => {
+    if (!isTrustedSender(event)) {
+      throw new Error('Origen no autorizado');
+    }
+    const split = splitRequestedPackages(packageNames);
+    if (!split || split.rejected.length > 0) {
+      throw new Error('La limpieza incluye apps que esta versión de DriWin no permite quitar');
+    }
+    if (cleanupInProgress) {
+      throw new Error('Ya hay una limpieza en curso');
+    }
+    cleanupInProgress = true;
+    try {
+      return await removePackages(split.allowed);
+    } finally {
+      cleanupInProgress = false;
     }
   });
 
@@ -130,6 +167,9 @@ function createWindow(): void {
     frame: false,
     backgroundColor: '#222831',
     title: 'DriWin',
+    // Logo DW en la barra de tareas. En desarrollo viene de public/; empaquetado,
+    // Vite ya lo copió a dist/ (y el .exe además lo lleva incrustado).
+    icon: path.join(app.getAppPath(), isDev ? 'public' : 'dist', 'icon.ico'),
     webPreferences: {
       preload: path.join(currentDir, 'preload.cjs'),
       // Aislamiento: React NO tiene acceso a Node ni a Windows directamente.

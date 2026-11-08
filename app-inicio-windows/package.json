@@ -30,6 +30,7 @@
       "package.json"
     ],
     "win": {
+      "icon": "public/icon.ico",
       "target": [
         "nsis",
         "portable"
@@ -46,7 +47,8 @@
   },
   "dependencies": {
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "simple-icons": "16.35.0"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",

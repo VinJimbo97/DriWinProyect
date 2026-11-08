@@ -12,9 +12,24 @@ import type {
  * params; client.ts se encarga del fetch y de los errores.
  */
 
-/** GET /api/v1/bloatware-rules (público, no requiere clave). */
-export function getBloatwareRules(signal?: AbortSignal): Promise<BloatwareRulesResponse> {
-  return apiGet<BloatwareRulesResponse>('/bloatware-rules', signal);
+/**
+ * GET /api/v1/bloatware-rules?profiles=Gamer,Developer (público).
+ * Con perfiles, el backend oculta lo que esos perfiles usan y marca lo sugerido.
+ */
+export async function getBloatwareRules(profiles: ProfileName[], signal?: AbortSignal): Promise<BloatwareRulesResponse> {
+  const query = profiles.length > 0 ? `?${new URLSearchParams({ profiles: profiles.join(',') })}` : '';
+  const response = await apiGet<BloatwareRulesResponse>(`/bloatware-rules${query}`, signal);
+  // Un backend anterior a la migración 004 no envía estos campos: la regla
+  // aparece sin paquetes (no se puede ejecutar) en vez de romper la pantalla.
+  return {
+    ...response,
+    data: response.data.map((rule) => ({
+      ...rule,
+      package_names: Array.isArray(rule.package_names) ? rule.package_names : [],
+      help_text: rule.help_text ?? '',
+      policy: rule.policy ?? (rule.risk_level === 'BAJO' ? 'SUGERIDO' : 'OPCIONAL'),
+    })),
+  };
 }
 
 /** GET /api/v1/recommendations/apps?profiles=Gamer,Creator (requiere clave). */

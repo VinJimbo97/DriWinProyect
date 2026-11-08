@@ -14,6 +14,8 @@ contextBridge.exposeInMainWorld('driwin', {
     ipcRenderer.on('driver:progress', handler);
     return () => ipcRenderer.removeListener('driver:progress', handler);
   },
+  detectBloatware: (packageNames: unknown) => ipcRenderer.invoke('bloatware:detect', packageNames),
+  removeBloatware: (packageNames: unknown) => ipcRenderer.invoke('bloatware:remove', packageNames),
   minimizeWindow: () => ipcRenderer.send('window:minimize'),
   toggleMaximizeWindow: () => ipcRenderer.send('window:toggle-maximize'),
   closeWindow: () => ipcRenderer.send('window:close'),

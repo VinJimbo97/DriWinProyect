@@ -56,21 +56,33 @@ export interface DriverRecommendationResponse {
   meta: { generated_at: string; query_time_ms: number };
 }
 
-/** GET /bloatware-rules → data[] */
+/** SUGERIDO = viene marcada · OPCIONAL = sin marcar (las PROTEGIDAS no llegan). */
+export type BloatwarePolicy = 'SUGERIDO' | 'OPCIONAL';
+
+/**
+ * GET /bloatware-rules → data[]
+ * (La API también envía los comandos PowerShell de la regla como documentación;
+ * la app NO los usa: sólo envía `package_names` a la lista permitida de Electron.)
+ */
 export interface BloatwareRule {
   bloatware_id: number;
   app_display_name: string;
   package_signature: string;
-  detection_powershell_cmd: string;
-  removal_powershell_cmd: string;
+  /** Nombres exactos de los paquetes de la Store que se eliminan. */
+  package_names: string[];
   risk_level: BloatwareRiskLevel;
+  /** Resumen de una línea. */
   description: string;
+  /** Explicación en lenguaje simple para el botón "?". */
+  help_text: string;
+  policy: BloatwarePolicy;
   created_at: string;
 }
 
 export interface BloatwareRulesResponse {
   data: BloatwareRule[];
-  meta: { total: number };
+  /** `hidden`: reglas que los perfiles elegidos protegen (no se envían). */
+  meta: { total: number; profiles?: string[]; hidden?: number };
 }
 
 /** GET /recommendations/apps?profiles=... → data[] */

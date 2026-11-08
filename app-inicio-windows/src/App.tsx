@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import type { ApiRequestError } from './api/client';
+import { CrownIcon, DeviceIcon, GearIcon } from './components/DeviceIcon';
+import { deviceKind } from './components/deviceKind';
+import { AppIcon } from './components/AppIcon';
 import type { ProfileName } from './api/types';
-import { useBloatwareRules } from './hooks/useBloatwareRules';
+import { BloatwarePanel } from './components/BloatwarePanel';
 import { useDriverInstall } from './hooks/useDriverInstall';
 import { useDriverRecommendations } from './hooks/useDriverRecommendations';
 import { useHardwareScan } from './hooks/useHardwareScan';
@@ -106,15 +109,11 @@ export default function App() {
 
   // Datos traídos desde server-api mediante hooks
   const driverRecs = useDriverRecommendations(scan.data, activeProfiles);
-  const bloatware = useBloatwareRules();
   const apps = useRecommendedApps(activeProfiles);
 
   // Instalación real de drivers: sólo en la app de escritorio y sobre el equipo real
   const driverInstall = useDriverInstall();
   const canInstallDrivers = desktop !== undefined && fixtureId === NATIVE_SOURCE_ID;
-
-  // Reglas de bloatware que el usuario marcó para eliminar (por bloatware_id)
-  const [selectedBloatware, setSelectedBloatware] = useState<Set<number>>(new Set());
 
   const handleProfileToggle = (profile: ProfileName) => {
     if (selectedProfiles.includes(profile)) {
@@ -141,18 +140,6 @@ export default function App() {
     } catch {
       /* sin almacenamiento local el equipo elegido dura sólo esta sesión */
     }
-  };
-
-  const toggleBloatware = (id: number) => {
-    setSelectedBloatware(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
   };
 
   return (
@@ -197,17 +184,34 @@ export default function App() {
       <div className="titlebar">
         <div className="nav-tabs">
           <button className={`tab-btn ${activeTab === 'driwin' ? 'active' : ''}`} onClick={() => setActiveTab('driwin')}>
-            ⚡ DriWin
+            DriWin
           </button>
           <button className={`tab-btn ${activeTab === 'apps' ? 'active' : ''}`} onClick={() => setActiveTab('apps')}>
-            📦 Apps
+            Apps
           </button>
           <button className={`tab-btn ${activeTab === 'optimizar' ? 'active' : ''}`} onClick={() => setActiveTab('optimizar')}>
-            🧹 Optimizar Windows
+            Optimizar Windows
           </button>
         </div>
 
         <div className="window-controls">
+          {/* Configuración y Premium, junto a los controles de ventana */}
+          <button
+            className={`bar-btn ${activeTab === 'configuracion' ? 'active' : ''}`}
+            title="Configuración"
+            onClick={() => setActiveTab('configuracion')}
+          >
+            <GearIcon />
+          </button>
+          <button
+            className={`bar-btn premium ${activeTab === 'premium' ? 'active' : ''}`}
+            title="DriWin Premium"
+            onClick={() => setActiveTab('premium')}
+          >
+            <CrownIcon />
+            <span>Premium</span>
+          </button>
+          <span className="bar-divider" />
           <button className="win-btn" title="Minimizar" onClick={() => desktop?.minimizeWindow()}>─</button>
           <button className="win-btn" title="Maximizar" onClick={() => desktop?.toggleMaximizeWindow()}>□</button>
           <button
@@ -235,7 +239,8 @@ export default function App() {
                 <div style={{ marginTop: '15px' }}>
                   {scan.data.devices.map(device => (
                     <div key={device.instance_id} className="driver-row">
-                      <div>
+                      <DeviceIcon kind={deviceKind(device.category, device.name)} />
+                      <div className="driver-info">
                         <div style={{ fontWeight: 'bold' }}>{device.name}</div>
                         <div style={{ fontSize: '0.8rem', opacity: 0.7 }}>Versión instalada: {device.current_version}</div>
                         <div style={{ fontSize: '0.7rem', opacity: 0.5 }}>{device.category} · VEN_{device.ven_id} DEV_{device.dev_id}</div>
@@ -267,7 +272,8 @@ export default function App() {
                     if (!item.ok) {
                       return (
                         <div key={item.device.instance_id} className="driver-row" style={{ opacity: 0.55 }}>
-                          <div>
+                          <DeviceIcon kind={deviceKind(item.device.category, item.device.name)} muted />
+                          <div className="driver-info">
                             <div style={{ fontWeight: 'bold' }}>{item.device.name}</div>
                             <div style={{ fontSize: '0.8rem' }}>
                               {item.error.status === 404 ? 'Hardware no catalogado en DriWin' : 'Sin driver publicado para tu perfil o versión de Windows'}
@@ -321,7 +327,8 @@ export default function App() {
 
                     return (
                       <div key={item.device.instance_id} className="driver-row">
-                        <div>
+                        <DeviceIcon kind={deviceKind(item.device.category, item.device.name)} />
+                        <div className="driver-info">
                           <div style={{ fontWeight: 'bold' }}>{item.device.name}</div>
                           <div style={{ fontSize: '0.85rem', color: 'var(--primary-color)' }}>
                             {recommendation.edition_name} {recommendation.version_number}
@@ -370,7 +377,8 @@ export default function App() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '15px', marginTop: '20px' }}>
                   {apps.data.data.map(app => (
                     <div key={app.app_id} className="driver-row">
-                      <div>
+                      <AppIcon name={app.app_name} />
+                      <div className="driver-info">
                         <strong>{app.app_name}</strong>
                         <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.7 }}>
                           {app.category} · v{app.version_number} · {app.file_size_mb} MB
@@ -387,38 +395,12 @@ export default function App() {
 
         {/* PESTAÑA 3: OPTIMIZAR WINDOWS (LIMPIEZA DE BLOATWARE) */}
         {activeTab === 'optimizar' && (
-          <div className="column-panel" style={{ width: '100%' }}>
-            <h2>Limpieza de Bloatware</h2>
-            <p style={{ opacity: 0.8 }}>Desactiva o elimina componentes preinstalados de Windows que saturan la memoria en segundo plano:</p>
-            
-            <ApiStatus status={bloatware.status} error={bloatware.error} onRetry={bloatware.reload} />
-
-            {bloatware.status === 'success' && (
-              <div style={{ marginTop: '20px' }}>
-                {bloatware.data.data.map(rule => (
-                  <div key={rule.bloatware_id} className="quiz-option" onClick={() => toggleBloatware(rule.bloatware_id)}>
-                    <div>
-                      <strong>{rule.app_display_name}</strong>
-                      <span style={{ marginLeft: '8px', fontSize: '0.7rem', color: rule.risk_level === 'ALTO' ? 'var(--danger-color)' : rule.risk_level === 'MEDIO' ? 'var(--warning-color)' : 'var(--primary-color)' }}>
-                        Riesgo {rule.risk_level}
-                      </span>
-                      <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', opacity: 0.75 }}>{rule.description}</p>
-                    </div>
-                    <input type="checkbox" checked={selectedBloatware.has(rule.bloatware_id)} readOnly />
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <button
-              className="btn-action"
-              style={{ background: 'var(--danger-color)', borderColor: 'var(--danger-color)', color: '#fff', padding: '12px 24px', marginTop: '15px' }}
-              disabled={selectedBloatware.size === 0}
-              onClick={() => alert(`Eliminando ${selectedBloatware.size} componentes seleccionados...`)}
-            >
-              Ejecutar Limpieza Instantánea
-            </button>
-          </div>
+          <BloatwarePanel
+            key={[...activeProfiles].sort().join(',')}
+            profiles={activeProfiles}
+            profileTitle={activeProfileTitle}
+            renderApiError={(error, onRetry) => <ApiStatus status="error" error={error} onRetry={onRetry} />}
+          />
         )}
 
         {/* PESTAÑA 4: CONFIGURACIÓN Y PERFIL */}
@@ -469,24 +451,6 @@ export default function App() {
             </div>
           </div>
         )}
-
-        {/* DOCK INFERIOR IZQUIERDO (Engranaje y Corona) */}
-        <div className="bottom-dock">
-          <button 
-            className={`dock-btn ${activeTab === 'configuracion' ? 'active' : ''}`} 
-            title="Configuración"
-            onClick={() => setActiveTab('configuracion')}
-          >
-            ⚙
-          </button>
-          <button 
-            className={`dock-btn premium ${activeTab === 'premium' ? 'active' : ''}`} 
-            title="Upgrade / Premium"
-            onClick={() => setActiveTab('premium')}
-          >
-            👑
-          </button>
-        </div>
 
       </div>
     </div>

@@ -17,8 +17,8 @@ const RESOURCE_PATH = `${env.API_BASE_PATH}/bloatware-rules`;
 export class BloatwareController {
   static async getRules(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { risk_level } = getValidated<ListBloatwareQuery>(req, 'query');
-      const result = await BloatwareService.getAllRules(risk_level);
+      const { risk_level, profiles } = getValidated<ListBloatwareQuery>(req, 'query');
+      const result = await BloatwareService.getAllRules(risk_level, profiles);
       res.status(200).json(result);
     } catch (error) {
       next(error);

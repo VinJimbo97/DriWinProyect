@@ -36,19 +36,61 @@ const descriptionSchema = z
   .min(10, 'description debe tener al menos 10 caracteres')
   .max(2000, 'description no puede superar 2000 caracteres');
 
-/** GET /api/v1/bloatware-rules?risk_level=BAJO */
+/**
+ * Nombre de paquete de la Store: mismo patrón que ck_bloatware_package_names.
+ * Sin comillas, espacios ni ; → no se puede inyectar nada en PowerShell.
+ */
+const packageNameSchema = z
+  .string()
+  .trim()
+  .regex(
+    /^[A-Za-z0-9][A-Za-z0-9._*-]{1,99}$/,
+    'Cada paquete sólo admite letras, números, punto, guion, guion bajo y * (2 a 100 caracteres)',
+  );
+
+const packageNamesSchema = z
+  .array(packageNameSchema)
+  .max(20, 'Una regla no puede tener más de 20 paquetes');
+
+const helpTextSchema = z
+  .string()
+  .trim()
+  .max(2000, 'help_text no puede superar 2000 caracteres');
+
+/** GET /api/v1/bloatware-rules?risk_level=BAJO&profiles=Gamer,Developer */
 export const listBloatwareQuerySchema = z.object({
   risk_level: riskLevelSchema.optional(),
+  profiles: z
+    .string()
+    .trim()
+    .max(400, 'La lista de perfiles es demasiado larga')
+    .transform((value) => [
+      ...new Set(
+        value
+          .split(',')
+          .map((profile) => profile.trim())
+          .filter(Boolean),
+      ),
+    ])
+    .refine((profiles) => profiles.length <= 10, {
+      message: 'No se pueden consultar más de 10 perfiles a la vez',
+    })
+    .refine((profiles) => profiles.every((profile) => profile.length <= 50), {
+      message: 'El nombre de perfil no puede superar 50 caracteres',
+    })
+    .optional(),
 });
 
 /** POST /api/v1/bloatware-rules */
 export const createBloatwareSchema = z.object({
   app_display_name: displayNameSchema,
   package_signature: signatureSchema,
+  package_names: packageNamesSchema.optional(),
   detection_powershell_cmd: powershellSchema('detection_powershell_cmd'),
   removal_powershell_cmd: powershellSchema('removal_powershell_cmd'),
   risk_level: riskLevelSchema,
   description: descriptionSchema,
+  help_text: helpTextSchema.optional(),
 });
 
 /** PUT /api/v1/bloatware-rules/:id (actualización parcial, al menos un campo) */

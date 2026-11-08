@@ -21,7 +21,22 @@ export interface DriverInstallProgress {
   percent: number | null;
 }
 
+/** Resultado de buscar bloatware (electron/bloatwareCleaner.ts). */
+export interface BloatwareDetection {
+  /** paquete pedido → nombres reales instalados (vacío = no está) */
+  installed: Record<string, string[]>;
+  /** paquetes que esta versión de la app no permite tocar */
+  unsupported: string[];
+}
+
+export interface PackageRemovalResult {
+  status: 'removed' | 'not_installed' | 'failed';
+  message?: string;
+}
+
 export interface DriwinDesktopBridge {
+  detectBloatware(packageNames: string[]): Promise<BloatwareDetection>;
+  removeBloatware(packageNames: string[]): Promise<Record<string, PackageRemovalResult>>;
   scanHardware(): Promise<{ os_environment: OsEnvironment; devices: RawPnpDevice[] }>;
   installDriver(request: DriverInstallRequest): Promise<DriverInstallResult>;
   /** Devuelve la función que cancela la suscripción. */

@@ -1,5 +1,6 @@
 import { pool } from '../config/db.js';
 import type {
+  BloatwarePolicyRow,
   BloatwareRuleRow,
   CreateBloatwareInput,
   UpdateBloatwareInput,
@@ -15,10 +16,12 @@ const BLOATWARE_COLUMNS = [
   'bloatware_id',
   'app_display_name',
   'package_signature',
+  'package_names',
   'detection_powershell_cmd',
   'removal_powershell_cmd',
   'risk_level',
   'description',
+  'help_text',
   'created_at',
 ].join(', ');
 
@@ -42,6 +45,18 @@ export class BloatwareRepository {
     return rows;
   }
 
+  /** Política de cada regla para los perfiles pedidos (los que no existen se ignoran). */
+  static async findPoliciesForProfiles(profiles: string[]): Promise<BloatwarePolicyRow[]> {
+    const { rows } = await pool.query<BloatwarePolicyRow>(
+      `SELECT bpp.bloatware_id, p.profile_name, bpp.policy
+         FROM bloatware_profile_policy bpp
+        INNER JOIN user_profiles p ON p.profile_id = bpp.profile_id
+        WHERE p.profile_name = ANY($1::text[])`,
+      [profiles],
+    );
+    return rows;
+  }
+
   static async findById(bloatwareId: number): Promise<BloatwareRuleRow | null> {
     const { rows } = await pool.query<BloatwareRuleRow>(
       `SELECT ${BLOATWARE_COLUMNS}
@@ -56,8 +71,8 @@ export class BloatwareRepository {
     const { rows } = await pool.query<BloatwareRuleRow>(
       `INSERT INTO bloatware_rules (
          app_display_name, package_signature, detection_powershell_cmd,
-         removal_powershell_cmd, risk_level, description
-       ) VALUES ($1, $2, $3, $4, $5, $6)
+         removal_powershell_cmd, risk_level, description, package_names, help_text
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING ${BLOATWARE_COLUMNS}`,
       [
         input.app_display_name,
@@ -66,6 +81,8 @@ export class BloatwareRepository {
         input.removal_powershell_cmd,
         input.risk_level,
         input.description,
+        input.package_names ?? [],
+        input.help_text ?? '',
       ],
     );
     return rows[0];
@@ -82,7 +99,9 @@ export class BloatwareRepository {
               detection_powershell_cmd = COALESCE($4::text, detection_powershell_cmd),
               removal_powershell_cmd   = COALESCE($5::text, removal_powershell_cmd),
               risk_level               = COALESCE($6::text, risk_level),
-              description              = COALESCE($7::text, description)
+              description              = COALESCE($7::text, description),
+              package_names            = COALESCE($8::text[], package_names),
+              help_text                = COALESCE($9::text, help_text)
         WHERE bloatware_id = $1
         RETURNING ${BLOATWARE_COLUMNS}`,
       [
@@ -93,6 +112,8 @@ export class BloatwareRepository {
         input.removal_powershell_cmd ?? null,
         input.risk_level ?? null,
         input.description ?? null,
+        input.package_names ?? null,
+        input.help_text ?? null,
       ],
     );
     return rows[0] ?? null;
