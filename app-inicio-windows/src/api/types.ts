@@ -94,6 +94,10 @@ export interface RecommendedApp {
   download_url: string;
   file_size_mb: number;
   silent_install_flags: string;
+  /** Id exacto en winget; con él la app de escritorio la instala. */
+  winget_id: string | null;
+  /** Página oficial para apps que no están en winget. */
+  official_url: string | null;
   source_profiles: string[];
 }
 

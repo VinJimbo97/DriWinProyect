@@ -96,8 +96,13 @@ CREATE TABLE recommended_apps (
     download_url TEXT NOT NULL,               -- URL sintética hacia Azure Blob Storage (Offloading)
     file_size_mb INT NOT NULL,                -- Tamaño del instalador en MB
     silent_install_flags VARCHAR(80) NOT NULL, -- Flags para instalación silenciosa (Paso 5)
+    winget_id VARCHAR(100),                   -- Id exacto en winget (migración 006): la app instala con winget
+    official_url TEXT,                        -- Página oficial si la app no está en winget
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT ck_app_size CHECK (file_size_mb > 0)
+    CONSTRAINT ck_app_size CHECK (file_size_mb > 0),
+    CONSTRAINT chk_app_winget_id CHECK (winget_id IS NULL OR winget_id ~ '^[A-Za-z0-9][A-Za-z0-9.+_-]{1,99}$'),
+    CONSTRAINT chk_app_official_url CHECK (official_url IS NULL OR official_url ~ '^https://[^\s]+$')
+    -- chk_app_install_source se agrega en B.5, después de asignar el origen de cada app.
 );
 
 -- 4.1 TABLA PIVOTE PERFIL <-> APLICACIÓN
@@ -368,6 +373,36 @@ FROM (VALUES
 ) AS v(profile_name, app_name)
 INNER JOIN user_profiles p      ON p.profile_name  = v.profile_name
 INNER JOIN recommended_apps a   ON a.app_name      = v.app_name;
+
+-- Origen de instalación de cada app (ver db/migrations/006_apps_winget.sql).
+UPDATE recommended_apps a
+SET winget_id = v.winget_id, official_url = v.official_url
+FROM (VALUES
+  ('Steam',                'Valve.Steam',                       NULL),
+  ('Epic Games Launcher',  'EpicGames.EpicGamesLauncher',       NULL),
+  ('Discord',              'Discord.Discord',                   NULL),
+  ('G-Helper',             'seerge.g-helper',                   NULL),
+  ('Opera GX',             'Opera.OperaGX',                     NULL),
+  ('Krita',                'KDE.Krita',                         NULL),
+  ('Blender',              'BlenderFoundation.Blender',         NULL),
+  ('Clip Studio Paint',    'Celsys.ClipStudioPaint',            NULL),
+  ('MakeHuman',            NULL, 'https://static.makehumancommunity.org/makehuman.html'),
+  ('DaVinci Resolve',      NULL, 'https://www.blackmagicdesign.com/products/davinciresolve'),
+  ('Visual Studio Code',   'Microsoft.VisualStudioCode',        NULL),
+  ('Git for Windows',      'Git.Git',                           NULL),
+  ('Docker Desktop',       'Docker.DockerDesktop',              NULL),
+  ('Postman',              'Postman.Postman',                   NULL),
+  ('Node.js LTS',          'OpenJS.NodeJS.LTS',                 NULL),
+  ('LibreOffice',          'TheDocumentFoundation.LibreOffice', NULL),
+  ('7-Zip',                '7zip.7zip',                         NULL),
+  ('Adobe Acrobat Reader', 'Adobe.Acrobat.Reader.64-bit',       NULL),
+  ('VLC Media Player',     'VideoLAN.VLC',                      NULL),
+  ('SumatraPDF',           'SumatraPDF.SumatraPDF',             NULL)
+) AS v(app_name, winget_id, official_url)
+WHERE a.app_name = v.app_name;
+
+ALTER TABLE recommended_apps ADD CONSTRAINT chk_app_install_source
+  CHECK (winget_id IS NOT NULL OR official_url IS NOT NULL);
 
 -- ----------------------------------------------------------------------------
 -- B.6 Insertar Reglas de Bloatware (20 de riesgo BAJO/MEDIO) y su política por perfil (= migración 004)

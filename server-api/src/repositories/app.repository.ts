@@ -15,13 +15,15 @@ export class AppRepository {
       SELECT
         a.app_id, a.app_name, a.category, a.version_number,
         a.download_url, a.file_size_mb, a.silent_install_flags,
+        a.winget_id, a.official_url,
         array_agg(DISTINCT p.profile_name ORDER BY p.profile_name) AS source_profiles
       FROM user_profiles p
       INNER JOIN profile_apps pa    ON pa.profile_id = p.profile_id
       INNER JOIN recommended_apps a ON a.app_id      = pa.app_id
       WHERE p.profile_name = ANY($1::text[])
       GROUP BY a.app_id, a.app_name, a.category, a.version_number,
-               a.download_url, a.file_size_mb, a.silent_install_flags
+               a.download_url, a.file_size_mb, a.silent_install_flags,
+               a.winget_id, a.official_url
       ORDER BY a.category, a.app_name;
     `;
 

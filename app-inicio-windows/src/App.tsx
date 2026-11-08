@@ -5,6 +5,7 @@ import { deviceKind } from './components/deviceKind';
 import { AppIcon } from './components/AppIcon';
 import type { ProfileName } from './api/types';
 import { BloatwarePanel } from './components/BloatwarePanel';
+import { useAppInstall } from './hooks/useAppInstall';
 import { useDriverInstall } from './hooks/useDriverInstall';
 import { useDriverRecommendations } from './hooks/useDriverRecommendations';
 import { useHardwareScan } from './hooks/useHardwareScan';
@@ -110,6 +111,7 @@ export default function App() {
   // Datos traídos desde server-api mediante hooks
   const driverRecs = useDriverRecommendations(scan.data, activeProfiles);
   const apps = useRecommendedApps(activeProfiles);
+  const appInstall = useAppInstall(apps.status === 'success' ? apps.data.data : undefined);
 
   // Instalación real de drivers: sólo en la app de escritorio y sobre el equipo real
   const driverInstall = useDriverInstall();
@@ -372,21 +374,80 @@ export default function App() {
             {apps.status === 'success' && (
               <>
                 <p style={{ fontSize: '0.8rem', opacity: 0.6 }}>
-                  {apps.data.meta.total} aplicaciones · {apps.data.meta.total_size_mb} MB en total
+                  {apps.data.meta.total} aplicaciones · se descargan desde el sitio oficial de cada fabricante
+                  {appInstall.detecting && ' · revisando cuáles ya tienes...'}
                 </p>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '15px', marginTop: '20px' }}>
-                  {apps.data.data.map(app => (
-                    <div key={app.app_id} className="driver-row">
-                      <AppIcon name={app.app_name} />
-                      <div className="driver-info">
-                        <strong>{app.app_name}</strong>
-                        <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.7 }}>
-                          {app.category} · v{app.version_number} · {app.file_size_mb} MB
-                        </p>
+                  {apps.data.data.map(app => {
+                    const wingetId = app.winget_id;
+                    const install = wingetId ? appInstall.states[wingetId] : undefined;
+                    const isInstalled = wingetId !== null && appInstall.installed[wingetId] === true;
+                    const isUnsupported = wingetId !== null && appInstall.unsupported.has(wingetId);
+                    const working = install?.stage === 'installing';
+
+                    let buttonLabel = 'Instalar';
+                    let note: string | null = null;
+                    let disabled = !appInstall.available || appInstall.busy;
+                    let onClick: (() => void) | undefined;
+
+                    if (!wingetId && app.official_url) {
+                      const url = app.official_url;
+                      buttonLabel = 'Sitio oficial ↗';
+                      note = 'No está en winget: se descarga desde su página oficial.';
+                      disabled = !appInstall.available;
+                      onClick = () => appInstall.openOfficialPage(url);
+                    } else if (!wingetId || isUnsupported) {
+                      buttonLabel = 'No disponible';
+                      note = 'Esta versión de DriWin no instala esta app.';
+                      disabled = true;
+                    } else if (working) {
+                      buttonLabel = 'Instalando...';
+                      note = 'Sigue los pasos en la ventana del instalador.';
+                    } else if (install?.stage === 'error') {
+                      buttonLabel = 'Reintentar';
+                      note = install.message;
+                      onClick = () => void appInstall.install(wingetId);
+                    } else if (isInstalled) {
+                      buttonLabel = '✓ Instalada';
+                      note = install?.stage === 'done' && install.rebootRequired
+                        ? 'Reinicia el equipo para terminar la instalación.'
+                        : null;
+                      disabled = true;
+                    } else if (appInstall.detecting) {
+                      buttonLabel = 'Revisando...';
+                      disabled = true;
+                    } else {
+                      onClick = () => void appInstall.install(wingetId);
+                    }
+
+                    if (!appInstall.available && !note) {
+                      note = 'La instalación solo está disponible en la app de escritorio.';
+                    }
+
+                    return (
+                      <div key={app.app_id} className="driver-row">
+                        <AppIcon name={app.app_name} />
+                        <div className="driver-info">
+                          <strong>{app.app_name}</strong>
+                          <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.7 }}>
+                            {app.category} · {wingetId ? 'vía winget' : 'sitio oficial'}
+                          </p>
+                          {note && (
+                            <p style={{ margin: '4px 0 0 0', fontSize: '0.75rem', color: install?.stage === 'error' ? 'var(--danger-color)' : undefined, opacity: install?.stage === 'error' ? 1 : 0.75 }}>
+                              {note}
+                            </p>
+                          )}
+                        </div>
+                        <button
+                          className={`btn-action ${isInstalled ? 'installed' : ''}`}
+                          onClick={onClick}
+                          disabled={disabled || !onClick}
+                        >
+                          {buttonLabel}
+                        </button>
                       </div>
-                      <button className="btn-action">Instalar</button>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </>
             )}
