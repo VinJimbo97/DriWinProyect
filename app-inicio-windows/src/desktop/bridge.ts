@@ -34,7 +34,21 @@ export interface PackageRemovalResult {
   message?: string;
 }
 
+/** Resultado de buscar apps con winget (electron/appInstaller.ts). `null` = no se pudo comprobar. */
+export interface AppDetection {
+  installed: Record<string, boolean | null>;
+  /** ids que esta versión de la app no permite instalar */
+  unsupported: string[];
+}
+
+export type AppInstallResult =
+  | { ok: true; alreadyInstalled: boolean; rebootRequired: boolean }
+  | { ok: false; code: string; message: string };
+
 export interface DriwinDesktopBridge {
+  detectApps(wingetIds: string[]): Promise<AppDetection>;
+  installApp(wingetId: string): Promise<AppInstallResult>;
+  openOfficialPage(url: string): Promise<void>;
   detectBloatware(packageNames: string[]): Promise<BloatwareDetection>;
   removeBloatware(packageNames: string[]): Promise<Record<string, PackageRemovalResult>>;
   scanHardware(): Promise<{ os_environment: OsEnvironment; devices: RawPnpDevice[] }>;

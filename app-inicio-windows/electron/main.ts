@@ -1,6 +1,8 @@
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { app, BrowserWindow, ipcMain, net, protocol, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
+import { app, BrowserWindow, ipcMain, net, protocol, shell, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
+import { detectApps, installApp } from './appInstaller.js';
+import { isAllowedOfficialPage, splitRequestedIds } from './appPolicy.js';
 import { detectPackages, removePackages } from './bloatwareCleaner.js';
 import { splitRequestedPackages } from './bloatwarePolicy.js';
 import { installDriver } from './driverInstaller.js';
@@ -73,6 +75,9 @@ let installInProgress = false;
 /** Una limpieza de bloatware a la vez. */
 let cleanupInProgress = false;
 
+/** Una app a la vez: winget no admite dos instalaciones en paralelo. */
+let appInstallInProgress = false;
+
 function registerIpcHandlers(): void {
   ipcMain.handle('hardware:scan', (event) => {
     if (!isTrustedSender(event)) {
@@ -131,6 +136,41 @@ function registerIpcHandlers(): void {
     } finally {
       cleanupInProgress = false;
     }
+  });
+
+  // Apps: sólo ids de la lista permitida; lo demás se informa como no soportado.
+  ipcMain.handle('apps:detect', async (event, wingetIds: unknown) => {
+    if (!isTrustedSender(event)) {
+      throw new Error('Origen no autorizado');
+    }
+    const split = splitRequestedIds(wingetIds);
+    if (!split) {
+      throw new Error('Petición de detección inválida');
+    }
+    return { installed: await detectApps(split.allowed), unsupported: split.rejected };
+  });
+
+  ipcMain.handle('apps:install', async (event, wingetId: unknown) => {
+    if (!isTrustedSender(event)) {
+      throw new Error('Origen no autorizado');
+    }
+    if (appInstallInProgress) {
+      throw new Error('Ya hay una instalación de app en curso');
+    }
+    appInstallInProgress = true;
+    try {
+      return await installApp(wingetId);
+    } finally {
+      appInstallInProgress = false;
+    }
+  });
+
+  // Apps sin winget: se abre su página oficial en el navegador, nunca otra.
+  ipcMain.handle('apps:open-official', async (event, url: unknown) => {
+    if (!isTrustedSender(event) || !isAllowedOfficialPage(url)) {
+      throw new Error('Página no autorizada');
+    }
+    await shell.openExternal(url);
   });
 
   ipcMain.on('window:minimize', (event) => {

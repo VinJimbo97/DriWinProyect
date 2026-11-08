@@ -183,6 +183,8 @@ describe('AppService.resolveAppsRecommendation', () => {
         download_url: 'https://driwinstorage.blob.core.windows.net/apps/steam-setup.exe',
         file_size_mb: 65,
         silent_install_flags: '/S',
+        winget_id: 'Valve.Steam',
+        official_url: null,
         source_profiles: ['Gamer'],
       },
       {
@@ -193,6 +195,8 @@ describe('AppService.resolveAppsRecommendation', () => {
         download_url: 'https://driwinstorage.blob.core.windows.net/apps/blender.msi',
         file_size_mb: 350,
         silent_install_flags: '/qn /norestart',
+        winget_id: null,
+        official_url: 'https://www.blender.org/download/',
         source_profiles: ['Creator'],
       },
     ]);
@@ -205,5 +209,8 @@ describe('AppService.resolveAppsRecommendation', () => {
       total_size_mb: 415,
     });
     expect(result.data[0].source_profiles).toEqual(['Gamer']);
+    // El origen de instalación llega intacto a la app de escritorio.
+    expect(result.data[0].winget_id).toBe('Valve.Steam');
+    expect(result.data[1]).toMatchObject({ winget_id: null, official_url: 'https://www.blender.org/download/' });
   });
 });

@@ -7,6 +7,10 @@ export interface RecommendedAppDto {
   download_url: string;
   file_size_mb: number;
   silent_install_flags: string;
+  /** Id exacto en winget; la app de escritorio instala con él (migración 006). */
+  winget_id: string | null;
+  /** Página oficial para apps que no están en winget. */
+  official_url: string | null;
   /** Perfiles que recomiendan la app (TEXT[] agregado desde `profile_apps`). */
   source_profiles: string[];
 }
