@@ -248,14 +248,14 @@ VALUES
 
 -- 4-6. Intel Gen 11-14 (Gráficos VEN_8086/DEV_A780, Wi-Fi VEN_8086/DEV_51F0, Bluetooth VID_8087/PID_0033) -> Office
 (4, 3, 'Win11_x64', 'Intel Processor Graphics Driver (Gen 11-14)', '31.0.101.5522', '2026-10-01', 'https://driwinstorage.blob.core.windows.net/drivers/DriverProcesadorGen11%20a%2014%20Graphics.exe', 745, '--silent --no-reboot', TRUE),
-(5, 3, 'Win11_x64', 'Intel Wireless Wi-Fi Driver (Gen 11-14)', '23.40.0', '2026-10-01', 'https://driwinstorage.blob.core.windows.net/drivers/DriverWifiGen11a14.exe', 72, '-q -norestart', TRUE),
+(5, 3, 'Win11_x64', 'Intel Wireless Wi-Fi Driver (Gen 11-14)', '24.80.0.2', '2026-10-01', 'https://driwinstorage.blob.core.windows.net/drivers/WiFi-24.80.0-Driver64-Win10-Win11.exe', 72, '-q -norestart', TRUE),
 (6, 3, 'Win11_x64', 'Intel Wireless Bluetooth Driver (Win 10/11)', '23.40.0', '2026-10-01', 'https://driwinstorage.blob.core.windows.net/drivers/DriverBluetoothtWin10y11.exe', 61, '/quiet /norestart', TRUE);
 
 -- Huellas verificadas de los instaladores (ver db/migrations/003_huella_instaladores.sql)
 UPDATE driver_packages SET sha256 = '511e01a35f8b6bddb6463c74062467f69d08e0662059abc515f879dfe2675724'
 WHERE download_url = 'https://driwinstorage.blob.core.windows.net/drivers/DriverBluetoothtWin10y11.exe';
 UPDATE driver_packages SET sha256 = '40d2f714830b406ccc1f9c00547ad6090f164f928748e38f27a1c7c0ef5ed5ea'
-WHERE download_url = 'https://driwinstorage.blob.core.windows.net/drivers/DriverWifiGen11a14.exe';
+WHERE download_url = 'https://driwinstorage.blob.core.windows.net/drivers/WiFi-24.80.0-Driver64-Win10-Win11.exe';
 UPDATE driver_packages SET sha256 = '325047b5c9a06559cb6c2136e7aba1b9059aebed90826cd12526063514750366'
 WHERE download_url = 'https://driwinstorage.blob.core.windows.net/drivers/NVIDIA%20GeForce%20v555.85%20(DCH).exe';
 UPDATE driver_packages SET sha256 = 'dae9e8d239d2dc40e2c3315c1893adcc4937139f91314d522ca0eaec16d43018'
@@ -270,6 +270,41 @@ UPDATE driver_packages SET sha256 = 'd929d8b4587cc49717357b7ef3f60582304568c198f
 WHERE download_url = 'https://driwinstorage.blob.core.windows.net/drivers/NvidiaDriverCreadorPackageLauncher.exe';
 UPDATE driver_packages SET sha256 = '298645a3728834766935b8d8d2e301be233a69bc389736acafd4b2b33ce91025'
 WHERE download_url = 'https://driwinstorage.blob.core.windows.net/drivers/MediaTek_WLAN_r2cmw13w.exe';
+
+-- Drivers del PC de muestra (ver db/migrations/005_drivers_pc_muestra.sql).
+-- Video, Wi-Fi y Bluetooth no dependen del uso del PC: se publican para los cuatro perfiles.
+INSERT INTO hardware_components (ven_id, dev_id, subsys_id, commercial_name, category) VALUES
+('10DE', '2520', 'GENERIC', 'NVIDIA GeForce RTX 3060 Laptop GPU', 'GPU'),
+('8086', '46A3', 'GENERIC', 'Intel UHD Graphics (12.ª generación)', 'GPU');
+
+INSERT INTO driver_packages
+(component_id, profile_id, os_environment, edition_name, version_number, release_date,
+ download_url, file_size_mb, silent_install_flags, is_whql_certified, sha256)
+SELECT h.component_id, p.profile_id, 'Win11_x64', d.edition_name, d.version_number, d.release_date::date,
+       d.download_url, d.file_size_mb, d.silent_install_flags, TRUE, d.sha256
+FROM (VALUES
+  ('10DE', '2520', 'NVIDIA GeForce Game Ready Driver (Notebook)', '621.14', '2026-11-04',
+   'https://driwinstorage.blob.core.windows.net/drivers/621.14-notebook-win10-win11-64bit-international-dch-whql-g.exe',
+   804, '-s -noreboot', '8fe6e0fd85345462ddbeb5996903b5853c18d34a21d2357d859bb744af9262f6'),
+  ('8086', '46A3', 'Intel Arc & Iris Xe Graphics Driver', '32.0.101.9175', '2026-11-07',
+   'https://driwinstorage.blob.core.windows.net/drivers/gfx_win_101.9175.exe',
+   863, '--silent', '707dfead0486e77b635eba606508eaa2fc9c972f6cca2484914dcfcfc906447d')
+) AS d(ven_id, dev_id, edition_name, version_number, release_date, download_url, file_size_mb, silent_install_flags, sha256)
+JOIN hardware_components h ON h.ven_id = d.ven_id AND h.dev_id = d.dev_id AND h.subsys_id = 'GENERIC'
+CROSS JOIN user_profiles p;
+
+INSERT INTO driver_packages
+(component_id, profile_id, os_environment, edition_name, version_number, release_date,
+ download_url, file_size_mb, silent_install_flags, is_whql_certified, sha256)
+SELECT d.component_id, p.profile_id, d.os_environment, d.edition_name, d.version_number, d.release_date,
+       d.download_url, d.file_size_mb, d.silent_install_flags, d.is_whql_certified, d.sha256
+FROM driver_packages d
+CROSS JOIN user_profiles p
+WHERE d.download_url IN (
+  'https://driwinstorage.blob.core.windows.net/drivers/WiFi-24.80.0-Driver64-Win10-Win11.exe',
+  'https://driwinstorage.blob.core.windows.net/drivers/DriverBluetoothtWin10y11.exe'
+)
+ON CONFLICT (component_id, profile_id, os_environment) DO NOTHING;
 
 -- ----------------------------------------------------------------------------
 -- B.4 Insertar Aplicaciones Recomendadas (5 por perfil, 20 en total)
