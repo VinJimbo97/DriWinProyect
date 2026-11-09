@@ -5,14 +5,18 @@ import { deviceKind } from './components/deviceKind';
 import { AppIcon } from './components/AppIcon';
 import type { ProfileName } from './api/types';
 import { BloatwarePanel } from './components/BloatwarePanel';
+import { PremiumPanel } from './components/PremiumPanel';
+import { SettingsPanel } from './components/SettingsPanel';
 import { useAppInstall } from './hooks/useAppInstall';
 import { useDriverInstall } from './hooks/useDriverInstall';
 import { useDriverRecommendations } from './hooks/useDriverRecommendations';
 import { useHardwareScan } from './hooks/useHardwareScan';
 import { useRecommendedApps } from './hooks/useRecommendedApps';
 import { desktop } from './desktop/bridge';
+import type { Translate } from './i18n/translate';
 import { DEFAULT_SOURCE_ID, NATIVE_SOURCE_ID, SCAN_SOURCES } from './scanner';
 import { driverUpdateState } from './scanner/driverVersion';
+import { useSettings } from './settings/settingsContext';
 import './styles/theme.css';
 
 // Tipos según diagrama de flujo
@@ -30,15 +34,11 @@ function loadSavedFixture(): string {
 }
 
 /**
- * Opciones del cuestionario. `id` es el nombre exacto en user_profiles
- * (lo que viaja a la API); `label` es lo que ve el usuario.
+ * Opciones del cuestionario, en orden. Cada id es el nombre exacto en
+ * user_profiles (lo que viaja a la API); los textos salen del diccionario
+ * (profile.<id>.label / title / hint).
  */
-const PROFILE_OPTIONS: { id: ProfileName; label: string; title: string; hint: string }[] = [
-  { id: 'Gamer', label: 'Gamer', title: '🎮 Uso este equipo para jugar (Gamer)', hint: 'Prioridad a drivers Game Ready y baja latencia' },
-  { id: 'Developer', label: 'Desarrollador', title: '💻 Uso este equipo para programar (Desarrollador)', hint: 'Drivers de virtualización y puertos seriales COM/UART' },
-  { id: 'Creator', label: 'Creador', title: '🎨 Apps de Edición e Ilustración (Creador)', hint: 'Drivers NVIDIA Studio y perfiles de color estables' },
-  { id: 'Office', label: 'Oficinista', title: '🏢 Máxima Seguridad y Estabilidad (Oficinista)', hint: 'Drivers WHQL certificados y ahorro energético' },
-];
+const PROFILE_IDS: ProfileName[] = ['Gamer', 'Developer', 'Creator', 'Office'];
 
 const PROFILES_STORAGE_KEY = 'driwin_profiles';
 
@@ -52,34 +52,35 @@ function loadSavedProfiles(): ProfileName[] | null {
     if (!Array.isArray(parsed)) {
       return null;
     }
-    return PROFILE_OPTIONS.map((option) => option.id).filter((id) => parsed.includes(id));
+    return PROFILE_IDS.filter((id) => parsed.includes(id));
   } catch {
     return null;
   }
 }
 
-function profilesTitle(profiles: ProfileName[]): string {
+function profilesTitle(profiles: ProfileName[], t: Translate): string {
   if (profiles.length === 0) {
-    return 'Usuario Estándar';
+    return t('profile.standard');
   }
-  return PROFILE_OPTIONS.filter((option) => profiles.includes(option.id))
-    .map((option) => option.label)
+  return PROFILE_IDS.filter((id) => profiles.includes(id))
+    .map((id) => t(`profile.${id}.label`))
     .join(' & ');
 }
 
 /** Mensaje de carga / error con botón de reintento para los datos de la API. */
 function ApiStatus({ status, error, onRetry }: { status: string; error: ApiRequestError | null; onRetry: () => void }) {
+  const { t } = useSettings();
   if (status === 'loading') {
-    return <p style={{ opacity: 0.7 }}>Cargando desde el servidor...</p>;
+    return <p style={{ opacity: 0.7 }}>{t('common.loadingServer')}</p>;
   }
   if (status === 'error' && error) {
     return (
       <div style={{ border: '1px solid var(--danger-color)', borderRadius: '8px', padding: '12px', marginTop: '15px' }}>
         <p style={{ margin: 0, color: 'var(--danger-color)' }}>{error.message}</p>
         <p style={{ margin: '4px 0 10px 0', fontSize: '0.75rem', opacity: 0.6 }}>
-          Código: {error.code}{error.requestId ? ` · requestId: ${error.requestId}` : ''}
+          {t('common.errorCode', { code: error.code })}{error.requestId ? ` · requestId: ${error.requestId}` : ''}
         </p>
-        <button className="btn-action" onClick={onRetry}>Reintentar</button>
+        <button className="btn-action" onClick={onRetry}>{t('common.retry')}</button>
       </div>
     );
   }
@@ -87,6 +88,8 @@ function ApiStatus({ status, error, onRetry }: { status: string; error: ApiReque
 }
 
 export default function App() {
+  const { t } = useSettings();
+
   // Estado de arranque (Onboarding)
   // Sesión previa guardada en localStorage (null = usuario nuevo)
   const [savedProfiles] = useState<ProfileName[] | null>(loadSavedProfiles);
@@ -96,7 +99,7 @@ export default function App() {
   // Perfiles marcados en el cuestionario (borrador) y perfiles ya confirmados
   const [selectedProfiles, setSelectedProfiles] = useState<ProfileName[]>(savedProfiles ?? []);
   const [activeProfiles, setActiveProfiles] = useState<ProfileName[]>(savedProfiles ?? []);
-  const activeProfileTitle = profilesTitle(activeProfiles);
+  const activeProfileTitle = profilesTitle(activeProfiles, t);
 
   // Navegación de pestañas
   const [activeTab, setActiveTab] = useState<TabType>('driwin');
@@ -146,37 +149,37 @@ export default function App() {
 
   return (
     <div className="window-container">
-      
+
       {/* Modal Onboarding: Cuestionario de Perfil con Shell en Paralelo */}
       {showQuiz && (
         <div className="overlay-modal">
           <div className="modal-box">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-              <h2 style={{ margin: 0 }}>Cuestionario de Perfil</h2>
-              <span style={{ fontSize: '0.8rem', color: parallelScanDone ? '#2ed573' : 'var(--primary-color)' }}>
-                {parallelScanDone ? '● Hardware Escaneado (En Paralelo)' : '○ Escaneando IDs VEN/DEV...'}
+              <h2 style={{ margin: 0 }}>{t('quiz.title')}</h2>
+              <span style={{ fontSize: '0.8rem', color: parallelScanDone ? 'var(--success-color)' : 'var(--primary-color)' }}>
+                {parallelScanDone ? t('quiz.scanDone') : t('quiz.scanning')}
               </span>
             </div>
             <p style={{ opacity: 0.8, fontSize: '0.9rem', marginBottom: '20px' }}>
-              Selecciona las actividades prioritarias de tu equipo para sugerir los controladores ideales:
+              {t('quiz.intro')}
             </p>
 
-            {PROFILE_OPTIONS.map(option => (
-              <div key={option.id} className="quiz-option" onClick={() => handleProfileToggle(option.id)}>
+            {PROFILE_IDS.map(id => (
+              <div key={id} className="quiz-option" onClick={() => handleProfileToggle(id)}>
                 <div>
-                  <strong>{option.title}</strong>
-                  <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', opacity: 0.75 }}>{option.hint}</p>
+                  <strong>{t(`profile.${id}.title`)}</strong>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', opacity: 0.75 }}>{t(`profile.${id}.hint`)}</p>
                 </div>
-                <input type="checkbox" checked={selectedProfiles.includes(option.id)} readOnly />
+                <input type="checkbox" checked={selectedProfiles.includes(id)} readOnly />
               </div>
             ))}
 
-            <button 
-              className="btn-action" 
-              style={{ width: '100%', marginTop: '15px', padding: '12px', background: 'var(--primary-color)', color: '#222831' }}
+            <button
+              className="btn-action"
+              style={{ width: '100%', marginTop: '15px', padding: '12px', background: 'var(--primary-color)', color: 'var(--on-primary)' }}
               onClick={completeQuiz}
             >
-              Confirmar y Entrar a DriWin
+              {t('quiz.confirm')}
             </button>
           </div>
         </div>
@@ -186,13 +189,13 @@ export default function App() {
       <div className="titlebar">
         <div className="nav-tabs">
           <button className={`tab-btn ${activeTab === 'driwin' ? 'active' : ''}`} onClick={() => setActiveTab('driwin')}>
-            DriWin
+            {t('tabs.driwin')}
           </button>
           <button className={`tab-btn ${activeTab === 'apps' ? 'active' : ''}`} onClick={() => setActiveTab('apps')}>
-            Apps
+            {t('tabs.apps')}
           </button>
           <button className={`tab-btn ${activeTab === 'optimizar' ? 'active' : ''}`} onClick={() => setActiveTab('optimizar')}>
-            Optimizar Windows
+            {t('tabs.optimize')}
           </button>
         </div>
 
@@ -200,26 +203,27 @@ export default function App() {
           {/* Configuración y Premium, junto a los controles de ventana */}
           <button
             className={`bar-btn ${activeTab === 'configuracion' ? 'active' : ''}`}
-            title="Configuración"
+            title={t('bar.settings')}
+            aria-label={t('bar.settings')}
             onClick={() => setActiveTab('configuracion')}
           >
             <GearIcon />
           </button>
           <button
             className={`bar-btn premium ${activeTab === 'premium' ? 'active' : ''}`}
-            title="DriWin Premium"
+            title={t('bar.premiumTitle')}
             onClick={() => setActiveTab('premium')}
           >
             <CrownIcon />
-            <span>Premium</span>
+            <span>{t('bar.premium')}</span>
           </button>
           <span className="bar-divider" />
-          <button className="win-btn" title="Minimizar" onClick={() => desktop?.minimizeWindow()}>─</button>
-          <button className="win-btn" title="Maximizar" onClick={() => desktop?.toggleMaximizeWindow()}>□</button>
+          <button className="win-btn" title={t('window.minimize')} onClick={() => desktop?.minimizeWindow()}>─</button>
+          <button className="win-btn" title={t('window.maximize')} onClick={() => desktop?.toggleMaximizeWindow()}>□</button>
           <button
             className="win-btn close"
-            title="Cerrar"
-            onClick={() => (desktop ? desktop.closeWindow() : alert('Cerrando DriWin...'))}
+            title={t('window.close')}
+            onClick={() => (desktop ? desktop.closeWindow() : alert(t('window.closingBrowser')))}
           >
             ✕
           </button>
@@ -228,14 +232,14 @@ export default function App() {
 
       {/* --- CONTENIDO PRINCIPAL --- */}
       <div className="content-area">
-        
+
         {/* PESTAÑA 1: DASHBOARD DE DRIVERS (Según tu boceto) */}
         {activeTab === 'driwin' && (
           <div className="split-view">
             {/* Columna Izquierda: Drivers Actuales */}
             <div className="column-panel">
-              <h2 style={{ borderBottom: '1px solid rgba(0,173,181,0.3)', paddingBottom: '10px' }}>Drivers Actuales</h2>
-              {scan.status === 'loading' && <p style={{ opacity: 0.7 }}>Escaneando IDs VEN/DEV del equipo...</p>}
+              <h2 style={{ borderBottom: '1px solid rgba(0,173,181,0.3)', paddingBottom: '10px' }}>{t('drivers.currentTitle')}</h2>
+              {scan.status === 'loading' && <p style={{ opacity: 0.7 }}>{t('drivers.scanning')}</p>}
               {scan.status === 'error' && <ApiStatus status={scan.status} error={scan.error} onRetry={scan.reload} />}
               {scan.status === 'success' && (
                 <div style={{ marginTop: '15px' }}>
@@ -244,7 +248,7 @@ export default function App() {
                       <DeviceIcon kind={deviceKind(device.category, device.name)} />
                       <div className="driver-info">
                         <div style={{ fontWeight: 'bold' }}>{device.name}</div>
-                        <div style={{ fontSize: '0.8rem', opacity: 0.7 }}>Versión instalada: {device.current_version}</div>
+                        <div style={{ fontSize: '0.8rem', opacity: 0.7 }}>{t('drivers.installedVersion', { version: device.current_version })}</div>
                         <div style={{ fontSize: '0.7rem', opacity: 0.5 }}>{device.category} · VEN_{device.ven_id} DEV_{device.dev_id}</div>
                       </div>
                     </div>
@@ -256,16 +260,16 @@ export default function App() {
             {/* Columna Derecha: Drivers Actualizar según perfil */}
             <div className="column-panel">
               <h2 style={{ borderBottom: '1px solid rgba(0,173,181,0.3)', paddingBottom: '10px' }}>
-                Drivers a Actualizar
+                {t('drivers.updateTitle')}
                 <span style={{ display: 'block', fontSize: '0.85rem', color: 'var(--primary-color)', fontWeight: 'normal', marginTop: '4px' }}>
-                  Según tu perfil: {activeProfileTitle}
+                  {t('drivers.byProfile', { profile: activeProfileTitle })}
                 </span>
               </h2>
 
               {scan.status === 'success' && driverRecs.status === 'idle' && (
-                <p style={{ opacity: 0.7 }}>Completa el cuestionario de perfil para ver los drivers recomendados.</p>
+                <p style={{ opacity: 0.7 }}>{t('drivers.needQuiz')}</p>
               )}
-              {scan.status === 'loading' && <p style={{ opacity: 0.7 }}>Esperando el escaneo de hardware...</p>}
+              {scan.status === 'loading' && <p style={{ opacity: 0.7 }}>{t('drivers.waitingScan')}</p>}
               <ApiStatus status={driverRecs.status} error={driverRecs.error} onRetry={driverRecs.reload} />
 
               {driverRecs.status === 'success' && (
@@ -278,7 +282,7 @@ export default function App() {
                           <div className="driver-info">
                             <div style={{ fontWeight: 'bold' }}>{item.device.name}</div>
                             <div style={{ fontSize: '0.8rem' }}>
-                              {item.error.status === 404 ? 'Hardware no catalogado en DriWin' : 'Sin driver publicado para tu perfil o versión de Windows'}
+                              {item.error.status === 404 ? t('drivers.notCataloged') : t('drivers.noDriver')}
                             </div>
                           </div>
                         </div>
@@ -290,37 +294,37 @@ export default function App() {
                     const install = driverInstall.states[recommendation.driver_id];
                     const working = install !== undefined && ['downloading', 'verifying', 'installing'].includes(install.stage);
 
-                    let buttonLabel = 'Instalar';
+                    let buttonLabel = t('drivers.install');
                     if (updateState === 'current') {
-                      buttonLabel = '✓ Al día';
+                      buttonLabel = t('drivers.upToDate');
                     } else if (install?.stage === 'done') {
-                      buttonLabel = 'Instalar de nuevo';
+                      buttonLabel = t('drivers.installAgain');
                     } else if (install?.stage === 'downloading') {
-                      buttonLabel = install.percent === null ? 'Descargando...' : `Descargando ${install.percent}%`;
+                      buttonLabel = install.percent === null
+                        ? t('drivers.downloading')
+                        : t('drivers.downloadingPercent', { percent: install.percent });
                     } else if (install?.stage === 'verifying') {
-                      buttonLabel = 'Verificando...';
+                      buttonLabel = t('drivers.verifying');
                     } else if (install?.stage === 'installing') {
-                      buttonLabel = 'Instalador abierto...';
+                      buttonLabel = t('drivers.installerOpen');
                     } else if (install?.stage === 'error') {
-                      buttonLabel = 'Reintentar';
+                      buttonLabel = t('common.retry');
                     }
 
                     let note: string | null = null;
                     if (install?.stage === 'error') {
                       note = install.message;
                     } else if (install?.stage === 'installing') {
-                      note = 'Acepta el permiso de Windows y sigue los pasos en la ventana del instalador.';
+                      note = t('drivers.noteInstalling');
                     } else if (install?.stage === 'done') {
-                      note = install.rebootRequired
-                        ? 'Reinicia el equipo para terminar la instalación.'
-                        : 'El instalador terminó. Si lo cancelaste, tu driver sigue igual.';
+                      note = install.rebootRequired ? t('drivers.noteReboot') : t('drivers.noteDone');
                     } else if (updateState !== 'current' && !working) {
                       if (!canInstallDrivers) {
-                        note = 'La instalación solo está disponible en la app de escritorio, con el equipo real.';
+                        note = t('drivers.noteDesktopOnly');
                       } else if (!recommendation.sha256) {
-                        note = 'Pendiente de verificación de seguridad.';
+                        note = t('drivers.notePendingVerification');
                       } else if (updateState === 'unknown') {
-                        note = 'No se pudo comparar con tu versión instalada; revísala antes de instalar.';
+                        note = t('drivers.noteUnknownVersion');
                       }
                     }
 
@@ -336,7 +340,8 @@ export default function App() {
                             {recommendation.edition_name} {recommendation.version_number}
                           </div>
                           <div style={{ fontSize: '0.7rem', opacity: 0.6 }}>
-                            Perfil {recommendation.profile_name} · {recommendation.file_size_mb} MB{recommendation.is_whql_certified ? ' · WHQL' : ''}
+                            {t('drivers.profileLine', { profile: recommendation.profile_name, size: recommendation.file_size_mb })}
+                            {recommendation.is_whql_certified ? ' · WHQL' : ''}
                           </div>
                           {note && (
                             <div style={{ fontSize: '0.75rem', marginTop: '4px', color: install?.stage === 'error' ? 'var(--danger-color)' : undefined, opacity: install?.stage === 'error' ? 1 : 0.75 }}>
@@ -363,19 +368,19 @@ export default function App() {
         {/* PESTAÑA 2: INSTALADOR DE APPS */}
         {activeTab === 'apps' && (
           <div className="column-panel" style={{ width: '100%' }}>
-            <h2>Instalador de Software</h2>
-            <p style={{ opacity: 0.8 }}>Aplicaciones recomendadas para tu entorno configurado ({activeProfileTitle}):</p>
+            <h2>{t('apps.title')}</h2>
+            <p style={{ opacity: 0.8 }}>{t('apps.subtitle', { profile: activeProfileTitle })}</p>
 
             {apps.status === 'idle' && (
-              <p style={{ opacity: 0.7 }}>Completa el cuestionario de perfil para ver aplicaciones recomendadas.</p>
+              <p style={{ opacity: 0.7 }}>{t('apps.needQuiz')}</p>
             )}
             <ApiStatus status={apps.status} error={apps.error} onRetry={apps.reload} />
 
             {apps.status === 'success' && (
               <>
                 <p style={{ fontSize: '0.8rem', opacity: 0.6 }}>
-                  {apps.data.meta.total} aplicaciones · se descargan desde el sitio oficial de cada fabricante
-                  {appInstall.detecting && ' · revisando cuáles ya tienes...'}
+                  {t('apps.count', { count: apps.data.meta.total })}
+                  {appInstall.detecting && t('apps.checkingSuffix')}
                 </p>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '15px', marginTop: '20px' }}>
                   {apps.data.data.map(app => {
@@ -385,43 +390,41 @@ export default function App() {
                     const isUnsupported = wingetId !== null && appInstall.unsupported.has(wingetId);
                     const working = install?.stage === 'installing';
 
-                    let buttonLabel = 'Instalar';
+                    let buttonLabel = t('apps.install');
                     let note: string | null = null;
                     let disabled = !appInstall.available || appInstall.busy;
                     let onClick: (() => void) | undefined;
 
                     if (!wingetId && app.official_url) {
                       const url = app.official_url;
-                      buttonLabel = 'Sitio oficial ↗';
-                      note = 'No está en winget: se descarga desde su página oficial.';
+                      buttonLabel = t('apps.officialSite');
+                      note = t('apps.noteNotInWinget');
                       disabled = !appInstall.available;
                       onClick = () => appInstall.openOfficialPage(url);
                     } else if (!wingetId || isUnsupported) {
-                      buttonLabel = 'No disponible';
-                      note = 'Esta versión de DriWin no instala esta app.';
+                      buttonLabel = t('apps.notAvailable');
+                      note = t('apps.noteUnsupported');
                       disabled = true;
                     } else if (working) {
-                      buttonLabel = 'Instalando...';
-                      note = 'Sigue los pasos en la ventana del instalador.';
+                      buttonLabel = t('apps.installing');
+                      note = t('apps.noteFollowInstaller');
                     } else if (install?.stage === 'error') {
-                      buttonLabel = 'Reintentar';
+                      buttonLabel = t('common.retry');
                       note = install.message;
                       onClick = () => void appInstall.install(wingetId);
                     } else if (isInstalled) {
-                      buttonLabel = '✓ Instalada';
-                      note = install?.stage === 'done' && install.rebootRequired
-                        ? 'Reinicia el equipo para terminar la instalación.'
-                        : null;
+                      buttonLabel = t('apps.installed');
+                      note = install?.stage === 'done' && install.rebootRequired ? t('apps.noteReboot') : null;
                       disabled = true;
                     } else if (appInstall.detecting) {
-                      buttonLabel = 'Revisando...';
+                      buttonLabel = t('apps.checking');
                       disabled = true;
                     } else {
                       onClick = () => void appInstall.install(wingetId);
                     }
 
                     if (!appInstall.available && !note) {
-                      note = 'La instalación solo está disponible en la app de escritorio.';
+                      note = t('apps.noteDesktopOnly');
                     }
 
                     return (
@@ -430,7 +433,7 @@ export default function App() {
                         <div className="driver-info">
                           <strong>{app.app_name}</strong>
                           <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.7 }}>
-                            {app.category} · {wingetId ? 'vía winget' : 'sitio oficial'}
+                            {t(wingetId ? 'apps.viaWinget' : 'apps.viaOfficial', { category: app.category })}
                           </p>
                           {note && (
                             <p style={{ margin: '4px 0 0 0', fontSize: '0.75rem', color: install?.stage === 'error' ? 'var(--danger-color)' : undefined, opacity: install?.stage === 'error' ? 1 : 0.75 }}>
@@ -464,54 +467,19 @@ export default function App() {
           />
         )}
 
-        {/* PESTAÑA 4: CONFIGURACIÓN Y PERFIL */}
+        {/* PESTAÑA 4: CONFIGURACIÓN (apartados: General, Perfil, Premium, Avanzado) */}
         {activeTab === 'configuracion' && (
-          <div className="column-panel" style={{ width: '100%' }}>
-            <h2>Configuración y Perfil</h2>
-            <div style={{ backgroundColor: 'var(--surface-color)', padding: '20px', borderRadius: '8px', marginTop: '20px' }}>
-              <p><strong>Perfil activo:</strong> {activeProfileTitle}</p>
-              <p><strong>Permisos de Administrador:</strong> se piden solo al instalar, con el aviso de Windows.</p>
-              <button className="btn-action" onClick={() => setShowQuiz(true)} style={{ marginTop: '10px' }}>
-                Reconfigurar Cuestionario Inicial
-              </button>
-            </div>
-
-            <div style={{ backgroundColor: 'var(--surface-color)', padding: '20px', borderRadius: '8px', marginTop: '20px' }}>
-              <p style={{ marginTop: 0 }}><strong>Origen del escaneo de hardware</strong></p>
-              <p style={{ fontSize: '0.8rem', opacity: 0.7 }}>
-                {desktop
-                  ? 'En la app de escritorio se lee el hardware real; los equipos simulados sirven para probar otros escenarios.'
-                  : 'En el navegador no se puede leer el hardware: se usan equipos simulados (Hardware Mock Fixture).'}
-              </p>
-              {SCAN_SOURCES.map(source => (
-                <div key={source.id} className="quiz-option" onClick={() => changeFixture(source.id)}>
-                  <div>
-                    <strong>{source.label}</strong>
-                    <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', opacity: 0.75 }}>{source.description}</p>
-                  </div>
-                  <input type="radio" checked={source.id === fixtureId} readOnly />
-                </div>
-              ))}
-            </div>
-          </div>
+          <SettingsPanel
+            profileTitle={activeProfileTitle}
+            onRetakeQuiz={() => setShowQuiz(true)}
+            fixtureId={fixtureId}
+            onChangeFixture={changeFixture}
+            onSeePlans={() => setActiveTab('premium')}
+          />
         )}
 
-        {/* PESTAÑA 5: PLAN PREMIUM */}
-        {activeTab === 'premium' && (
-          <div className="column-panel" style={{ width: '100%', textAlign: 'center' }}>
-            <h2 style={{ color: 'var(--warning-color)' }}>👑 DriWin Premium</h2>
-            <p style={{ opacity: 0.85, maxWidth: '500px', margin: '0 auto' }}>
-              Desbloquea optimización térmica avanzada para GPU de portátiles, copias de seguridad de drivers y acceso a catálogos históricos.
-            </p>
-            <div style={{ padding: '20px', border: '1px solid var(--warning-color)', borderRadius: '8px', maxWidth: '350px', margin: '30px auto' }}>
-              <h3>Licencia Pro / Anual</h3>
-              <p style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>$9.99 USD</p>
-              <button className="btn-action" style={{ background: 'var(--warning-color)', color: '#222831', width: '100%' }}>
-                Actualizar Ahora
-              </button>
-            </div>
-          </div>
-        )}
+        {/* PESTAÑA 5: PLANES PREMIUM */}
+        {activeTab === 'premium' && <PremiumPanel />}
 
       </div>
     </div>

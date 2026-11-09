@@ -3,15 +3,8 @@ import type { ApiRequestError } from '../api/client';
 import type { BloatwareRiskLevel, BloatwareRule, ProfileName } from '../api/types';
 import { useBloatwareCleanup, installedPackages, type RuleResult } from '../hooks/useBloatwareCleanup';
 import { useBloatwareRules } from '../hooks/useBloatwareRules';
+import { useSettings } from '../settings/settingsContext';
 import { HelpTip } from './HelpTip';
-
-const RISK_LABEL: Record<BloatwareRiskLevel, string> = { BAJO: 'Riesgo bajo', MEDIO: 'Riesgo medio', ALTO: 'Riesgo alto' };
-
-const RISK_HELP: Record<BloatwareRiskLevel, string> = {
-  BAJO: 'Casi nadie la usa. Se puede volver a instalar desde Microsoft Store.',
-  MEDIO: 'Revisa si la usas antes de quitarla. Se puede volver a instalar desde Microsoft Store.',
-  ALTO: 'Puede afectar el funcionamiento de Windows.',
-};
 
 interface Props {
   profiles: ProfileName[];
@@ -25,6 +18,8 @@ interface Props {
  * Se monta con key = perfiles: al cambiar de perfil se reinicia la selección.
  */
 export function BloatwarePanel({ profiles, profileTitle, renderApiError }: Props) {
+  const { t } = useSettings();
+  const riskLabel = (risk: BloatwareRiskLevel) => t(`bloat.risk.${risk}`);
   const rulesState = useBloatwareRules(profiles);
   const rules = rulesState.status === 'success' ? rulesState.data.data : null;
   const { detection, results, running, clean } = useBloatwareCleanup(rules);
@@ -36,7 +31,7 @@ export function BloatwarePanel({ profiles, profileTitle, renderApiError }: Props
   if (rulesState.status === 'error') {
     return (
       <div className="bloat-scroll">
-        <h2>Limpieza de Bloatware</h2>
+        <h2>{t('bloat.title')}</h2>
         {renderApiError(rulesState.error, rulesState.reload)}
       </div>
     );
@@ -44,8 +39,8 @@ export function BloatwarePanel({ profiles, profileTitle, renderApiError }: Props
   if (rulesState.status !== 'success' || !rules) {
     return (
       <div className="bloat-scroll">
-        <h2>Limpieza de Bloatware</h2>
-        <p style={{ opacity: 0.7 }}>Cargando opciones desde el servidor...</p>
+        <h2>{t('bloat.title')}</h2>
+        <p style={{ opacity: 0.7 }}>{t('common.loadingServer')}</p>
       </div>
     );
   }
@@ -95,33 +90,29 @@ export function BloatwarePanel({ profiles, profileTitle, renderApiError }: Props
   return (
     <div className="bloat-panel">
       <div className="bloat-scroll">
-        <h2 style={{ marginBottom: 4 }}>Limpieza de Bloatware</h2>
-        <p className="bloat-subtitle">Según tu perfil: {profileTitle}</p>
+        <h2 style={{ marginBottom: 4 }}>{t('bloat.title')}</h2>
+        <p className="bloat-subtitle">{t('bloat.byProfile', { profile: profileTitle })}</p>
         <p className="bloat-info">
-          DriWin solo quita apps de Microsoft Store para tu usuario, sin tocar el registro ni los servicios de Windows.
-          Todas se pueden volver a instalar desde la Store. Pasa el mouse sobre <span className="help-tip help-tip--inline">?</span> para
-          ver qué hace cada una.
+          {t('bloat.infoBefore')} <span className="help-tip help-tip--inline">?</span> {t('bloat.infoAfter')}
         </p>
 
-        {detection.status === 'detecting' && <p style={{ opacity: 0.7 }}>Buscando qué apps tienes instaladas...</p>}
+        {detection.status === 'detecting' && <p style={{ opacity: 0.7 }}>{t('bloat.detecting')}</p>}
         {detection.status === 'error' && (
-          <p className="bloat-error">No se pudo revisar el equipo: {detection.message}</p>
+          <p className="bloat-error">{t('bloat.detectError', { message: detection.message })}</p>
         )}
         {detection.status === 'unavailable' && (
-          <p className="bloat-note">
-            Estás viendo el catálogo completo: en el navegador no se puede revisar el equipo. La limpieza solo funciona en la app de escritorio.
-          </p>
+          <p className="bloat-note">{t('bloat.browserCatalog')}</p>
         )}
 
         {detection.status === 'done' && visible.length === 0 && (
-          <div className="bloat-empty">✓ Tu equipo no tiene ninguna de las apps de esta lista. No hay nada que limpiar.</div>
+          <div className="bloat-empty">{t('bloat.nothingToClean')}</div>
         )}
 
         {detection.status !== 'detecting' &&
           groups.map((group) => (
             <section key={group.risk} className="bloat-group">
               <h3 className={`bloat-group__title risk-${group.risk.toLowerCase()}`}>
-                {RISK_LABEL[group.risk]} <span>({group.rules.length})</span>
+                {riskLabel(group.risk)} <span>({group.rules.length})</span>
               </h3>
               {group.rules.map((rule) => (
                 <BloatwareRow
@@ -139,8 +130,8 @@ export function BloatwarePanel({ profiles, profileTitle, renderApiError }: Props
 
         {(notInstalledCount > 0 || hiddenByProfile > 0) && (
           <p className="bloat-note">
-            {notInstalledCount > 0 && `${notInstalledCount} opciones del catálogo no están instaladas en tu equipo. `}
-            {hiddenByProfile > 0 && `${hiddenByProfile} se ocultaron porque tu perfil las usa.`}
+            {notInstalledCount > 0 && `${t('bloat.notInstalled', { count: notInstalledCount })} `}
+            {hiddenByProfile > 0 && t('bloat.hiddenByProfile', { count: hiddenByProfile })}
           </p>
         )}
       </div>
@@ -148,41 +139,43 @@ export function BloatwarePanel({ profiles, profileTitle, renderApiError }: Props
       <div className="bloat-footer">
         <div className="bloat-footer__status">
           {running
-            ? 'Quitando apps... no cierres DriWin.'
+            ? t('bloat.running')
             : processed.length > 0
-              ? `Listo: ${removedCount} quitadas${failedCount > 0 ? ` · ${failedCount} no se pudieron quitar` : ''}.`
-              : `${selected.length} seleccionadas`}
+              ? failedCount > 0
+                ? t('bloat.doneSummaryFailed', { removed: removedCount, failed: failedCount })
+                : t('bloat.doneSummary', { removed: removedCount })
+              : t('bloat.selectedCount', { count: selected.length })}
         </div>
         <button
           className="btn-action btn-danger"
           disabled={!canClean || selected.length === 0 || running}
           onClick={() => setConfirming(true)}
         >
-          {running ? 'Limpiando...' : 'Ejecutar limpieza'}
+          {running ? t('bloat.cleaning') : t('bloat.runCleanup')}
         </button>
       </div>
 
       {confirming && (
         <div className="overlay-modal" onClick={() => setConfirming(false)}>
           <div className="modal-box" onClick={(event) => event.stopPropagation()}>
-            <h2 style={{ marginTop: 0 }}>¿Quitar {selected.length} {selected.length === 1 ? 'app' : 'apps'}?</h2>
-            <p style={{ opacity: 0.8, fontSize: '0.9rem' }}>
-              Se quitarán solo para tu usuario. Si después necesitas alguna, la puedes volver a instalar desde Microsoft Store.
-            </p>
+            <h2 style={{ marginTop: 0 }}>
+              {selected.length === 1 ? t('bloat.confirmTitleOne') : t('bloat.confirmTitleMany', { count: selected.length })}
+            </h2>
+            <p style={{ opacity: 0.8, fontSize: '0.9rem' }}>{t('bloat.confirmText')}</p>
             <ul className="bloat-confirm-list">
               {selected.map((rule) => (
                 <li key={rule.bloatware_id}>
                   {rule.app_display_name}
                   {rule.risk_level !== 'BAJO' && (
-                    <span className={`risk-badge risk-${rule.risk_level.toLowerCase()}`}>{RISK_LABEL[rule.risk_level]}</span>
+                    <span className={`risk-badge risk-${rule.risk_level.toLowerCase()}`}>{riskLabel(rule.risk_level)}</span>
                   )}
                 </li>
               ))}
             </ul>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 20 }}>
-              <button className="btn-action" onClick={() => setConfirming(false)}>Cancelar</button>
+              <button className="btn-action" onClick={() => setConfirming(false)}>{t('common.cancel')}</button>
               <button className="btn-action btn-danger" onClick={() => void runCleanup()}>
-                Sí, quitar
+                {t('bloat.confirmYes')}
               </button>
             </div>
           </div>
@@ -207,6 +200,8 @@ function BloatwareRow({
   result: RuleResult | undefined;
   onToggle: () => void;
 }) {
+  const { t } = useSettings();
+  const riskLabel = t(`bloat.risk.${rule.risk_level}`);
   return (
     <div className={`bloat-row ${disabled ? 'disabled' : ''} ${selected ? 'selected' : ''}`} onClick={onToggle}>
       <input
@@ -222,19 +217,19 @@ function BloatwareRow({
           <strong>{rule.app_display_name}</strong>
           <HelpTip
             title={rule.app_display_name}
-            footer={`${RISK_LABEL[rule.risk_level]}: ${RISK_HELP[rule.risk_level]}`}
+            footer={`${riskLabel}: ${t(`bloat.riskHelp.${rule.risk_level}`)}`}
           >
             {rule.help_text || rule.description}
           </HelpTip>
           {rule.risk_level !== 'BAJO' && (
-            <span className={`risk-badge risk-${rule.risk_level.toLowerCase()}`}>{RISK_LABEL[rule.risk_level]}</span>
+            <span className={`risk-badge risk-${rule.risk_level.toLowerCase()}`}>{riskLabel}</span>
           )}
         </div>
         <div className="bloat-row__desc">{rule.description}</div>
-        {unsupported && <div className="bloat-row__desc">Actualiza DriWin para poder quitar esta app.</div>}
+        {unsupported && <div className="bloat-row__desc">{t('bloat.updateToRemove')}</div>}
         {result?.status === 'failed' && <div className="bloat-row__error">✗ {result.message}</div>}
       </div>
-      {result?.status === 'removed' && <span className="bloat-row__done">✓ Quitada</span>}
+      {result?.status === 'removed' && <span className="bloat-row__done">{t('bloat.removed')}</span>}
     </div>
   );
 }

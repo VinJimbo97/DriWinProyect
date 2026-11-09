@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { useSettings } from '../settings/settingsContext';
 
 const POPOVER_WIDTH = 320;
 const MARGIN = 8;
@@ -16,6 +17,7 @@ export function HelpTip({ title, children, footer }: { title: string; children: 
   const [position, setPosition] = useState<{ top: number; left: number; above: boolean } | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const popoverId = useId();
+  const { t } = useSettings();
 
   const show = () => {
     const rect = buttonRef.current?.getBoundingClientRect();
@@ -66,7 +68,7 @@ export function HelpTip({ title, children, footer }: { title: string; children: 
         ref={buttonRef}
         type="button"
         className={`help-tip ${open ? 'open' : ''}`}
-        aria-label={`¿Qué es ${title}?`}
+        aria-label={t('help.whatIs', { title })}
         aria-expanded={open}
         aria-describedby={open ? popoverId : undefined}
         onClick={(event) => {
