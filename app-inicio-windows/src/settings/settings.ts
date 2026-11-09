@@ -13,14 +13,9 @@ export const PREMIUM_FEATURES = [
   'highRiskCleanup',
   'driverBackup',
   'removeGhostDevices',
-  'removeOldDrivers',
-  'startupDriverCheck',
 ] as const;
 
 export type PremiumFeature = (typeof PREMIUM_FEATURES)[number];
-
-/** Las funciones que borran algo del sistema parten desactivadas. */
-const OFF_BY_DEFAULT: readonly PremiumFeature[] = ['removeOldDrivers'];
 
 export interface Settings {
   language: Language;
@@ -37,7 +32,7 @@ export function defaultSettings(): Settings {
   return {
     language: 'es',
     theme: 'system',
-    premiumFeatures: Object.fromEntries(PREMIUM_FEATURES.map((feature) => [feature, !OFF_BY_DEFAULT.includes(feature)])) as Record<
+    premiumFeatures: Object.fromEntries(PREMIUM_FEATURES.map((feature) => [feature, true])) as Record<
       PremiumFeature,
       boolean
     >,

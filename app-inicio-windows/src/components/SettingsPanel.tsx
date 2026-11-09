@@ -15,7 +15,7 @@ const FEATURE_GROUPS: { title: MessageKey; features: PremiumFeature[] }[] = [
   { title: 'settings.premium.group.optimize', features: ['highRiskCleanup'] },
   {
     title: 'settings.premium.group.health',
-    features: ['driverBackup', 'removeGhostDevices', 'removeOldDrivers', 'startupDriverCheck'],
+    features: ['driverBackup', 'removeGhostDevices'],
   },
 ];
 

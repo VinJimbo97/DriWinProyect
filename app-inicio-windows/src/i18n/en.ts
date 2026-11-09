@@ -168,12 +168,7 @@ export const en: Record<MessageKey, string> = {
   'premium.feature.removeGhostDevices': 'Remove disconnected devices',
   'premium.feature.removeGhostDevices.desc':
     'Removes devices that are no longer connected from Windows. If you plug them in again, they come back.',
-  'premium.feature.removeOldDrivers': 'Remove old driver versions',
-  'premium.feature.removeOldDrivers.desc':
-    'Deletes old copies of a driver when a newer version of the same driver is already installed.',
-  'premium.feature.startupDriverCheck': 'Check drivers when Windows starts',
-  'premium.feature.startupDriverCheck.desc':
-    'When your PC starts, DriWin checks for new drivers and lets you know. It installs nothing without your approval.',
+
 
   // Premium tab (plans)
   'premium.title': '👑 DriWin Premium',

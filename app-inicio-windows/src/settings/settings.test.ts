@@ -15,23 +15,22 @@ describe('parseSettings', () => {
     assert.equal(settings.theme, 'system');
   });
 
-  it('deja desactivada por defecto la función que borra drivers antiguos', () => {
+  it('parte con todas las funciones Premium activadas', () => {
     const { premiumFeatures } = defaultSettings();
-    assert.equal(premiumFeatures.removeOldDrivers, false);
-    assert.equal(premiumFeatures.installAll, true);
     assert.deepEqual(Object.keys(premiumFeatures).sort(), [...PREMIUM_FEATURES].sort());
+    assert.ok(Object.values(premiumFeatures).every(Boolean));
   });
 
   it('respeta valores válidos y descarta los desconocidos', () => {
     const settings = parseSettings({
       language: 'en',
       theme: 'light',
-      premiumFeatures: { installAll: false, removeOldDrivers: true, inventada: true, driverBackup: 'si' },
+      premiumFeatures: { installAll: false, removeGhostDevices: false, inventada: true, driverBackup: 'si' },
     });
     assert.equal(settings.language, 'en');
     assert.equal(settings.theme, 'light');
     assert.equal(settings.premiumFeatures.installAll, false);
-    assert.equal(settings.premiumFeatures.removeOldDrivers, true);
+    assert.equal(settings.premiumFeatures.removeGhostDevices, false);
     assert.equal(settings.premiumFeatures.driverBackup, true);
     assert.equal('inventada' in settings.premiumFeatures, false);
   });

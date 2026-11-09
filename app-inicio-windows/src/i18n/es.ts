@@ -172,12 +172,7 @@ export const es = {
   'premium.feature.removeGhostDevices': 'Quitar dispositivos desconectados',
   'premium.feature.removeGhostDevices.desc':
     'Borra de Windows los dispositivos que ya no están conectados. Si los vuelves a conectar, reaparecen.',
-  'premium.feature.removeOldDrivers': 'Quitar versiones antiguas de drivers',
-  'premium.feature.removeOldDrivers.desc':
-    'Elimina copias viejas de un driver cuando ya tienes instalada una versión más nueva del mismo.',
-  'premium.feature.startupDriverCheck': 'Revisar drivers al iniciar Windows',
-  'premium.feature.startupDriverCheck.desc':
-    'Al encender el equipo, DriWin revisa si hay drivers nuevos y te avisa. No instala nada sin tu aprobación.',
+
 
   // Pestaña Premium (planes)
   'premium.title': '👑 DriWin Premium',
