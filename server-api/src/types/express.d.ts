@@ -11,6 +11,8 @@ declare global {
       requestId?: string;
       apiRole?: ApiRole;
       validated?: Partial<Record<RequestPart, unknown>>;
+      /** Sesión de una cuenta DriWin (middleware requireSession). */
+      accountSession?: { sessionId: number; accountId: number; deviceHash: Buffer };
     }
   }
 }

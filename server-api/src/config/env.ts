@@ -51,6 +51,19 @@ const envSchema = z
     AZURE_CONTAINER_APPS: z.string().default('apps'),
     AZURE_CONTAINER_DRIVERS: z.string().default('drivers'),
     AZURE_SAS_TOKEN: z.string().optional(),
+
+    // Cuentas DriWin: clave maestra para cifrar correos y mensajes de soporte
+    // (32 bytes en hexadecimal). Sin ella, las rutas de cuentas responden 503.
+    // Generar con: openssl rand -hex 32
+    DATA_ENCRYPTION_KEY: z.preprocess(
+      (value) => (value === '' || value === undefined ? undefined : value),
+      z
+        .string()
+        .regex(/^[0-9a-fA-F]{64}$/, 'DATA_ENCRYPTION_KEY debe tener 64 caracteres hexadecimales (32 bytes)')
+        .optional(),
+    ),
+    SESSION_TTL_DAYS: z.coerce.number().int().positive().max(365).default(30),
+    AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
   })
   .superRefine((data, ctx) => {
     if (data.NODE_ENV === 'production' && data.API_KEY.startsWith('CHANGE_ME')) {

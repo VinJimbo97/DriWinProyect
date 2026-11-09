@@ -58,16 +58,10 @@ const LAST_NAMES = [
   'Flores', 'Espinoza', 'Valenzuela', 'Castillo', 'Tapia', 'Reyes', 'Gutiérrez',
 ] as const;
 
-const PLACES = [
-  'Los Alerces', 'Las Araucarias', 'Los Coigües', 'El Roble', 'Los Canelos', 'Las Quilas',
-  'Los Arrayanes', 'El Maitén', 'Los Boldos', 'Las Lengas', 'El Quillay', 'Los Peumos',
-] as const;
-
-const INSTITUTION_TYPES = ['Colegio', 'Liceo Bicentenario', 'Escuela Municipal', 'Instituto Técnico'] as const;
-const OEM_BRANDS = ['Nébula', 'Cóndor', 'Austral', 'Pehuén', 'Andino', 'Volcán'] as const;
 const HYBRID_PROFILES = ['Gamer', 'Creator', 'Developer'] as const;
 
-const B2C_TIERS = ['Pase Mensual', 'Compra Única Vitalicia'];
+/** Planes de db/init.sql (B.7) y migración 008. */
+const PREMIUM_TIERS = ['DriWin Premium 1 año', 'DriWin Premium 2 años', 'DriWin Premium 3 años'];
 
 interface Persona {
   full_name: string;
@@ -96,14 +90,17 @@ function person(rng: Rng, role: string, profiles: string[]): Persona {
   };
 }
 
-/** Arquetipos alineados con la matriz comercial de subscription_tiers. */
+/**
+ * Arquetipos alineados con los planes de subscription_tiers: DriWin Premium es
+ * una suscripción para personas, de 1, 2 o 3 años y hasta 3 equipos.
+ */
 const ARCHETYPES: Archetype[] = [
-  { weight: 25, tierNames: B2C_TIERS, devices: [1, 3], build: (rng) => person(rng, 'Gamer', ['Gamer']) },
-  { weight: 15, tierNames: B2C_TIERS, devices: [1, 3], build: (rng) => person(rng, 'Creator', ['Creator']) },
-  { weight: 15, tierNames: B2C_TIERS, devices: [1, 3], build: (rng) => person(rng, 'Developer', ['Developer']) },
+  { weight: 25, tierNames: PREMIUM_TIERS, devices: [1, 3], build: (rng) => person(rng, 'Gamer', ['Gamer']) },
+  { weight: 15, tierNames: PREMIUM_TIERS, devices: [1, 3], build: (rng) => person(rng, 'Creator', ['Creator']) },
+  { weight: 15, tierNames: PREMIUM_TIERS, devices: [1, 3], build: (rng) => person(rng, 'Developer', ['Developer']) },
   {
     weight: 15,
-    tierNames: B2C_TIERS,
+    tierNames: PREMIUM_TIERS,
     devices: [1, 3],
     build: (rng) => {
       const first = pick(rng, HYBRID_PROFILES);
@@ -112,41 +109,9 @@ const ARCHETYPES: Archetype[] = [
       return person(rng, `Híbrido ${profiles.join(' + ')}`, profiles);
     },
   },
-  { weight: 10, tierNames: B2C_TIERS, devices: [1, 2], build: (rng) => person(rng, 'Oficinista', ['Office']) },
-  {
-    weight: 10,
-    tierNames: ['Plan Builder Pro'],
-    devices: [5, 40],
-    build: (rng) => person(rng, 'Técnico Armador', ['Office']),
-  },
-  {
-    weight: 6,
-    tierNames: ['Pack por Volumen'],
-    devices: [20, 100],
-    build: (rng) => {
-      const place = pick(rng, PLACES);
-      return {
-        full_name: `${pick(rng, INSTITUTION_TYPES)} ${place}`,
-        emailLocal: `sistemas.${slug(place)}`,
-        user_role_type: 'Institución Educativa',
-        profiles: ['Office'],
-      };
-    },
-  },
-  {
-    weight: 4,
-    tierNames: ['Alianza OEM / Certificado'],
-    devices: [50, 500],
-    build: (rng) => {
-      const brand = pick(rng, OEM_BRANDS);
-      return {
-        full_name: `${brand} Computación SpA`,
-        emailLocal: `oem.${slug(brand)}`,
-        user_role_type: 'Ensamblador OEM',
-        profiles: ['Gamer', 'Office'],
-      };
-    },
-  },
+  { weight: 15, tierNames: PREMIUM_TIERS, devices: [1, 2], build: (rng) => person(rng, 'Oficinista', ['Office']) },
+  // Técnico que arma o formatea equipos de su familia o clientes: usa los 3 equipos del plan.
+  { weight: 15, tierNames: PREMIUM_TIERS, devices: [2, 3], build: (rng) => person(rng, 'Técnico Armador', ['Office', 'Gamer']) },
 ];
 
 const TOTAL_WEIGHT = ARCHETYPES.reduce((sum, archetype) => sum + archetype.weight, 0);
@@ -188,7 +153,7 @@ export function generateSyntheticUsers(options: GenerateSyntheticUsersOptions): 
     const persona = archetype.build(rng);
     const tier = tiersByName.get(pick(rng, archetype.tierNames)) as SubscriptionTierRef;
 
-    // Nunca superar el límite del plan (ej. Compra Única = 1 PC).
+    // Nunca superar el límite del plan (3 equipos).
     const maxDevices = Math.min(archetype.devices[1], tier.max_devices ?? Number.POSITIVE_INFINITY);
     const minDevices = Math.min(archetype.devices[0], maxDevices);
 

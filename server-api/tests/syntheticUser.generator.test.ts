@@ -4,11 +4,9 @@ import { generateSyntheticUsers } from '../src/services/syntheticUser.generator.
 
 /** Mismos planes que la semilla de db/init.sql (B.7). */
 const tiers: SubscriptionTierRef[] = [
-  { tier_id: 1, tier_name: 'Pase Mensual', max_devices: 3 },
-  { tier_id: 2, tier_name: 'Compra Única Vitalicia', max_devices: 1 },
-  { tier_id: 3, tier_name: 'Plan Builder Pro', max_devices: null },
-  { tier_id: 4, tier_name: 'Pack por Volumen', max_devices: 100 },
-  { tier_id: 5, tier_name: 'Alianza OEM / Certificado', max_devices: null },
+  { tier_id: 1, tier_name: 'DriWin Premium 1 año', max_devices: 3 },
+  { tier_id: 2, tier_name: 'DriWin Premium 2 años', max_devices: 3 },
+  { tier_id: 3, tier_name: 'DriWin Premium 3 años', max_devices: 3 },
 ];
 
 const VALID_PROFILES = ['Gamer', 'Creator', 'Office', 'Developer'];
@@ -58,13 +56,17 @@ describe('generateSyntheticUsers', () => {
     }
   });
 
-  it('asigna planes coherentes con el segmento', () => {
-    const tierOf = (role: string) =>
-      new Set(users.filter((user) => user.user_role_type === role).map((user) => user.tier_id));
-    expect([...tierOf('Institución Educativa')]).toEqual([4]);
-    expect([...tierOf('Técnico Armador')]).toEqual([3]);
-    for (const tierId of tierOf('Gamer')) {
-      expect([1, 2]).toContain(tierId);
+  it('reparte a los usuarios entre los tres planes de suscripción', () => {
+    const used = new Set(users.map((user) => user.tier_id));
+    expect([...used].sort()).toEqual([1, 2, 3]);
+  });
+
+  it('el técnico armador usa al menos 2 de los 3 equipos', () => {
+    const technicians = users.filter((user) => user.user_role_type === 'Técnico Armador');
+    expect(technicians.length).toBeGreaterThan(0);
+    for (const user of technicians) {
+      expect(user.active_devices_count).toBeGreaterThanOrEqual(2);
+      expect(user.active_devices_count).toBeLessThanOrEqual(3);
     }
   });
 
