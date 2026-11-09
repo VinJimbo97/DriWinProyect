@@ -11,12 +11,11 @@ import type { ApiErrorBody } from './types';
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000').replace(/\/$/, '');
 const API_PATH = '/api/v1';
 
-/**
- * Clave de SÓLO LECTURA (API_KEY_READ_ONLY del backend). Vite incrusta las
- * variables VITE_* en el bundle, así que cualquiera puede verla: por eso
- * nunca se usa aquí la API_KEY de escritura.
+/*
+ * Sin claves: todo lo que se incluye en la app (Vite copia las VITE_* dentro
+ * del JavaScript) lo puede leer cualquiera. Las consultas al catálogo son
+ * públicas y la API las protege con límite de peticiones y validación.
  */
-const READ_ONLY_KEY = import.meta.env.VITE_API_READ_ONLY_KEY;
 
 /** Error de la API con el código y mensaje que envía server-api. */
 export class ApiRequestError extends Error {
@@ -52,9 +51,6 @@ async function request<T>(
   signal?: AbortSignal,
 ): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json' };
-  if (READ_ONLY_KEY) {
-    headers['X-API-Key'] = READ_ONLY_KEY;
-  }
   if (body !== undefined) {
     headers['Content-Type'] = 'application/json';
   }

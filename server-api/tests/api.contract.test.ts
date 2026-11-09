@@ -82,21 +82,23 @@ describe('Contrato HTTP /api/v1 (sin base de datos)', () => {
   });
 
   describe('homogeneidad de los módulos nuevos (recommendations / bloatware)', () => {
-    it('POST /recommendations/driver exige credencial', async () => {
+    // Las recomendaciones son públicas (la app no lleva claves): sin credencial
+    // la petición llega a la validación, que es la que responde 400.
+    it('POST /recommendations/driver no exige credencial y valida el body', async () => {
       const res = await request(app).post('/api/v1/recommendations/driver').send({
-        ven_id: '1002',
+        ven_id: 'AMD',
         dev_id: '1638',
         os_environment: 'Win11_x64',
         profiles: ['Gamer'],
       });
-      expect(res.status).toBe(401);
-      expect(res.body.error.code).toBe('UNAUTHORIZED');
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
     });
 
-    it('GET /recommendations/apps exige credencial (contrato §3.1)', async () => {
-      const res = await request(app).get('/api/v1/recommendations/apps?profiles=Gamer');
-      expect(res.status).toBe(401);
-      expect(res.body.error.code).toBe('UNAUTHORIZED');
+    it('GET /recommendations/apps no exige credencial y exige ?profiles=', async () => {
+      const res = await request(app).get('/api/v1/recommendations/apps');
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
     });
 
     it('POST /recommendations/driver valida el body antes de tocar la BD', async () => {
