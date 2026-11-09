@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import { desktop } from './desktop/bridge'
+import { SettingsProvider } from './settings/SettingsProvider'
 
 // En el .exe la interfaz ocupa toda la ventana (ver .is-desktop en theme.css).
 if (desktop) {
@@ -10,6 +11,8 @@ if (desktop) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <SettingsProvider>
+      <App />
+    </SettingsProvider>
   </StrictMode>,
 )
