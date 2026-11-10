@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useAccount } from '../account/accountContext';
 import { desktop } from '../desktop/bridge';
 import type { MessageKey } from '../i18n/translate';
 import { SCAN_SOURCES } from '../scanner';
@@ -25,11 +26,19 @@ interface Props {
   fixtureId: string;
   onChangeFixture: (id: string) => void;
   onSeePlans: () => void;
+  onOpenAccount: () => void;
 }
 
 /** Pestaña de Configuración: menú de apartados a la izquierda y su contenido a la derecha. */
-export function SettingsPanel({ profileTitle, onRetakeQuiz, fixtureId, onChangeFixture, onSeePlans }: Props) {
+export function SettingsPanel({ profileTitle, onRetakeQuiz, fixtureId, onChangeFixture, onSeePlans, onOpenAccount }: Props) {
   const { t, settings, setLanguage, setTheme, setPremiumFeature, premiumActive } = useSettings();
+  const { phase, status } = useAccount();
+  const subscription = status?.subscription?.active ? status.subscription : null;
+  const endDate = subscription
+    ? new Intl.DateTimeFormat(settings.language === 'es' ? 'es-CL' : 'en-US', { dateStyle: 'long' }).format(
+        new Date(subscription.ends_at),
+      )
+    : null;
   const [section, setSection] = useState<Section>('general');
 
   return (
@@ -117,17 +126,26 @@ export function SettingsPanel({ profileTitle, onRetakeQuiz, fixtureId, onChangeF
               <div>
                 <h3>{t('settings.premium.statusTitle')}</h3>
                 <span className={`plan-badge ${premiumActive ? 'active' : 'free'}`}>
-                  {premiumActive ? t('settings.premium.statusActive') : t('settings.premium.statusFree')}
+                  {premiumActive && subscription ? `👑 ${subscription.plan}` : t('settings.premium.statusFree')}
                 </span>
                 <p className="settings-note" style={{ marginTop: 10 }}>
-                  {premiumActive ? t('settings.premium.activeNote') : t('settings.premium.freeNote')}
+                  {premiumActive && endDate
+                    ? `${t('account.plan.until', { date: endDate })} · ${t('settings.premium.activeNote')}`
+                    : subscription
+                      ? t('premium.current.notThisDevice', { plan: subscription.plan })
+                      : t('settings.premium.freeNote')}
                 </p>
               </div>
-              {!premiumActive && (
-                <button type="button" className="btn-action btn-premium" onClick={onSeePlans}>
-                  {t('settings.premium.seePlans')}
+              <div className="plan-status__actions">
+                {!premiumActive && (
+                  <button type="button" className="btn-action btn-premium" onClick={onSeePlans}>
+                    {t('settings.premium.seePlans')}
+                  </button>
+                )}
+                <button type="button" className="btn-action" onClick={onOpenAccount}>
+                  {phase === 'signedIn' ? t('account.myAccount') : t('account.login.tab')}
                 </button>
-              )}
+              </div>
             </div>
 
             {FEATURE_GROUPS.map((group) => (

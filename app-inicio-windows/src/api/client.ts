@@ -22,13 +22,22 @@ export class ApiRequestError extends Error {
   readonly status: number;
   readonly code: string;
   readonly requestId?: string;
+  /** Detalle campo a campo de los errores de validación (400). */
+  readonly details?: { field: string; issue: string }[];
 
-  constructor(status: number, code: string, message: string, requestId?: string) {
+  constructor(
+    status: number,
+    code: string,
+    message: string,
+    requestId?: string,
+    details?: { field: string; issue: string }[],
+  ) {
     super(message);
     this.name = 'ApiRequestError';
     this.status = status;
     this.code = code;
     this.requestId = requestId;
+    this.details = details;
   }
 }
 
@@ -37,22 +46,39 @@ function isApiErrorBody(value: unknown): value is ApiErrorBody {
 }
 
 export function apiGet<T>(path: string, signal?: AbortSignal): Promise<T> {
-  return request<T>('GET', path, undefined, signal);
+  return request<T>('GET', path, undefined, { signal });
 }
 
 export function apiPost<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
-  return request<T>('POST', path, body, signal);
+  return request<T>('POST', path, body, { signal });
+}
+
+/**
+ * Petición con la sesión de la cuenta DriWin (Authorization: Bearer dws_...).
+ * El token lo entrega el servidor al iniciar sesión; no es una clave de la app.
+ */
+export function apiWithSession<T>(
+  method: 'GET' | 'POST' | 'DELETE',
+  path: string,
+  token: string,
+  body?: unknown,
+): Promise<T> {
+  return request<T>(method, path, body, { token });
 }
 
 async function request<T>(
-  method: 'GET' | 'POST',
+  method: 'GET' | 'POST' | 'DELETE',
   path: string,
   body: unknown,
-  signal?: AbortSignal,
+  options: { signal?: AbortSignal; token?: string } = {},
 ): Promise<T> {
+  const { signal, token } = options;
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (body !== undefined) {
     headers['Content-Type'] = 'application/json';
+  }
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
   }
 
   let response: Response;
@@ -74,6 +100,11 @@ async function request<T>(
     );
   }
 
+  // 204 = éxito sin contenido (cerrar sesión, borrar cuenta).
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
   const payload: unknown = await response.json().catch(() => null);
 
   if (!response.ok) {
@@ -83,6 +114,7 @@ async function request<T>(
         payload.error.code,
         payload.error.message,
         payload.error.requestId,
+        payload.error.details,
       );
     }
     throw new ApiRequestError(response.status, 'UNKNOWN_ERROR', `Error HTTP ${response.status}`);

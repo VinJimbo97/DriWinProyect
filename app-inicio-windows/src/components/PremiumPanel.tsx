@@ -1,3 +1,4 @@
+import { useAccount } from '../account/accountContext';
 import type { MessageKey } from '../i18n/translate';
 import { FEATURED_PLAN_YEARS, formatClp, monthlyEquivalent, PREMIUM_PLANS, savingsVsYearly } from '../premium/plans';
 import { useSettings } from '../settings/settingsContext';
@@ -5,10 +6,11 @@ import { PREMIUM_FEATURES } from '../settings/settings';
 
 /**
  * Pestaña Premium: los tres planes de suscripción y lo que incluyen.
- * La compra todavía no existe (falta la cuenta DriWin): el botón queda deshabilitado.
+ * Elegir un plan pide iniciar sesión (si hace falta) y abre el pago simulado.
  */
-export function PremiumPanel() {
-  const { t } = useSettings();
+export function PremiumPanel({ onChoosePlan }: { onChoosePlan: (years: 1 | 2 | 3) => void }) {
+  const { t, settings } = useSettings();
+  const { status, premiumActive, phase } = useAccount();
 
   const includes: MessageKey[] = [
     ...PREMIUM_FEATURES.map((feature) => `premium.feature.${feature}` as const),
@@ -16,10 +18,25 @@ export function PremiumPanel() {
     'premium.includes.devices',
   ];
 
+  const subscription = status?.subscription?.active ? status.subscription : null;
+  const endDate = subscription
+    ? new Intl.DateTimeFormat(settings.language === 'es' ? 'es-CL' : 'en-US', { dateStyle: 'long' }).format(
+        new Date(subscription.ends_at),
+      )
+    : null;
+
   return (
     <div className="premium-page">
       <h2>{t('premium.title')}</h2>
       <p className="premium-subtitle">{t('premium.subtitle')}</p>
+
+      {subscription && (
+        <div className={`premium-current ${premiumActive ? '' : 'warning'}`} role="status">
+          {premiumActive
+            ? t('premium.current.active', { plan: subscription.plan, date: endDate ?? '' })
+            : t('premium.current.notThisDevice', { plan: subscription.plan })}
+        </div>
+      )}
 
       <div className="plan-grid">
         {PREMIUM_PLANS.map((plan) => {
@@ -34,14 +51,20 @@ export function PremiumPanel() {
                 {t('premium.plan.perMonth', { price: formatClp(monthlyEquivalent(plan)) })}
               </p>
               <p className="plan-card__save">{savings > 0 ? t('premium.plan.save', { price: formatClp(savings) }) : ''}</p>
-              <button type="button" className={`btn-action ${featured ? 'btn-premium' : ''}`} disabled>
-                {t('premium.plan.soon')}
+              <button
+                type="button"
+                className={`btn-action ${featured ? 'btn-premium' : ''}`}
+                disabled={phase === 'loading'}
+                title={phase === 'signedIn' ? t('premium.plan.chooseHint') : t('premium.plan.loginHint')}
+                onClick={() => onChoosePlan(plan.years)}
+              >
+                {subscription ? t('premium.plan.extend') : t('premium.plan.choose')}
               </button>
             </div>
           );
         })}
       </div>
-      <p className="settings-note" style={{ textAlign: 'center' }}>{t('premium.plan.soonNote')}</p>
+      <p className="settings-note" style={{ textAlign: 'center' }}>{t('premium.plan.simulatedNote')}</p>
 
       <div className="premium-includes">
         <h3>{t('premium.includes')}</h3>

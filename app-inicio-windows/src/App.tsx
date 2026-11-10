@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import type { ApiRequestError } from './api/client';
-import { CrownIcon, DeviceIcon, GearIcon } from './components/DeviceIcon';
+import { useAccount } from './account/accountContext';
+import { AccountDialog, type AccountView } from './components/AccountDialog';
+import { CrownIcon, DeviceIcon, GearIcon, UserIcon } from './components/DeviceIcon';
+import { PurchaseDialog } from './components/PurchaseDialog';
 import { deviceKind } from './components/deviceKind';
 import { AppIcon } from './components/AppIcon';
 import type { ProfileName } from './api/types';
@@ -89,6 +92,21 @@ function ApiStatus({ status, error, onRetry }: { status: string; error: ApiReque
 
 export default function App() {
   const { t } = useSettings();
+  const account = useAccount();
+
+  // Cuenta: recuadro de la cuenta, plan elegido antes de iniciar sesión y compra en curso.
+  const [accountDialog, setAccountDialog] = useState<AccountView | 'default' | null>(null);
+  const [pendingPlan, setPendingPlan] = useState<1 | 2 | 3 | null>(null);
+  const [purchaseYears, setPurchaseYears] = useState<1 | 2 | 3 | null>(null);
+
+  const choosePlan = (years: 1 | 2 | 3) => {
+    if (account.phase === 'signedIn') {
+      setPurchaseYears(years);
+    } else {
+      setPendingPlan(years);
+      setAccountDialog('auth');
+    }
+  };
 
   // Estado de arranque (Onboarding)
   // Sesión previa guardada en localStorage (null = usuario nuevo)
@@ -200,7 +218,18 @@ export default function App() {
         </div>
 
         <div className="window-controls">
-          {/* Configuración y Premium, junto a los controles de ventana */}
+          {/* Cuenta, Configuración y Premium, junto a los controles de ventana */}
+          <button
+            className={`bar-btn account-btn ${accountDialog ? 'active' : ''}`}
+            title={account.phase === 'signedIn' && account.status ? `${t('account.myAccount')} · ${account.status.email}` : t('account.login.tab')}
+            aria-label={account.phase === 'signedIn' ? t('account.myAccount') : t('account.login.tab')}
+            onClick={() => setAccountDialog('default')}
+          >
+            <UserIcon />
+            {account.phase === 'signedIn' && (
+              <span className={`account-dot ${account.premiumActive ? 'premium' : ''}`} aria-hidden="true" />
+            )}
+          </button>
           <button
             className={`bar-btn ${activeTab === 'configuracion' ? 'active' : ''}`}
             title={t('bar.settings')}
@@ -475,13 +504,38 @@ export default function App() {
             fixtureId={fixtureId}
             onChangeFixture={changeFixture}
             onSeePlans={() => setActiveTab('premium')}
+            onOpenAccount={() => setAccountDialog('default')}
           />
         )}
 
         {/* PESTAÑA 5: PLANES PREMIUM */}
-        {activeTab === 'premium' && <PremiumPanel />}
+        {activeTab === 'premium' && <PremiumPanel onChoosePlan={choosePlan} />}
 
       </div>
+
+      {accountDialog && (
+        <AccountDialog
+          initialView={accountDialog === 'default' ? undefined : accountDialog}
+          onClose={() => {
+            setAccountDialog(null);
+            setPendingPlan(null);
+          }}
+          onSignedIn={() => {
+            // Si eligió un plan antes de iniciar sesión, sigue directo al pago simulado.
+            if (pendingPlan) {
+              setAccountDialog(null);
+              setPurchaseYears(pendingPlan);
+              setPendingPlan(null);
+            }
+          }}
+          onSeePlans={() => {
+            setAccountDialog(null);
+            setActiveTab('premium');
+          }}
+        />
+      )}
+
+      {purchaseYears && <PurchaseDialog years={purchaseYears} onClose={() => setPurchaseYears(null)} />}
     </div>
   );
 }
