@@ -8,10 +8,13 @@
  * Una regla nueva en la BD con paquetes que no estén aquí aparece como
  * "no disponible en esta versión" hasta que se publique una app que los incluya.
  *
- * Fuera a propósito (riesgo ALTO): la Tienda, Edge, WebView2, Defender,
- * Windows Update, Xbox Identity Provider / TCUI (inicio de sesión de juegos).
+ * Riesgo ALTO (migración 009, Premium): van en HIGH_RISK_PACKAGES y el proceso
+ * principal sólo los quita si antes se creó un punto de restauración.
+ *
+ * Fuera a propósito (nunca se quitan): la Tienda, el Instalador de aplicación
+ * (winget, lo usa DriWin), Edge, WebView2, Defender y Windows Update.
  */
-export const ALLOWED_PACKAGES: ReadonlySet<string> = new Set([
+const STANDARD_PACKAGES = [
   // Riesgo BAJO
   'Microsoft.BingNews',
   'Microsoft.BingWeather',
@@ -42,7 +45,28 @@ export const ALLOWED_PACKAGES: ReadonlySet<string> = new Set([
   'Microsoft.PowerAutomateDesktop',
   'MicrosoftCorporationII.QuickAssist',
   'Microsoft.ZuneMusic',
+];
+
+/** Riesgo ALTO: apps que mucha gente usa sin saberlo. Requieren punto de restauración. */
+export const HIGH_RISK_PACKAGES: ReadonlySet<string> = new Set([
+  'Microsoft.XboxIdentityProvider',
+  'Microsoft.Xbox.TCUI',
+  'Microsoft.Windows.Photos',
+  'Microsoft.WindowsCamera',
+  'Microsoft.ScreenSketch',
+  'Microsoft.Paint',
+  'Microsoft.WindowsCalculator',
+  'Microsoft.WindowsNotepad',
+  'Microsoft.WindowsTerminal',
+  'Microsoft.MicrosoftStickyNotes',
+  'MicrosoftWindows.Client.WebExperience',
 ]);
+
+export const ALLOWED_PACKAGES: ReadonlySet<string> = new Set([...STANDARD_PACKAGES, ...HIGH_RISK_PACKAGES]);
+
+export function isHighRiskPackage(name: string): boolean {
+  return HIGH_RISK_PACKAGES.has(name);
+}
 
 /** Mismo patrón que ck_bloatware_package_names: sin comillas, espacios ni ;. */
 const PACKAGE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._*-]{1,99}$/;

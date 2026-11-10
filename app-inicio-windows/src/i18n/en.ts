@@ -265,4 +265,76 @@ export const en: Record<MessageKey, string> = {
   'purchase.done.text': 'You have {plan}, valid until {date}.',
   'purchase.done.deviceNotRegistered': 'This PC is not one of your 3 PCs: check "My account" to use Premium here.',
   'purchase.done.close': 'Start using Premium',
+  // Premium features
+  'tabs.health': 'Health check',
+  'premium.disabledInSettings': 'Turned off in Settings → Premium',
+
+  // Install all
+  'installAll.title': 'Install all',
+  'installAll.hint': 'Drivers and apps in a queue: Windows asks for permission only once.',
+  'installAll.desktopOnly': 'Available in the desktop app.',
+  'installAll.intro':
+    'Choose what to install. DriWin downloads and verifies each driver, Windows asks for permission ONCE and then the installers open one after another: accept the terms of each one in its window.',
+  'installAll.nothing': '✓ There are no drivers to update or pending apps for your profile.',
+  'installAll.start': 'Install {count} selected',
+  'installAll.runningNote':
+    'Accept the Windows prompt and follow the steps in each installer window. Do not close DriWin until the queue finishes.',
+  'installAll.summary': 'Queue finished: {done} installed · {failed} not installed.',
+  'installAll.reboot': 'Restart your PC to finish installing some drivers.',
+  'installAll.close': 'Done',
+  'installAll.kind.driver': 'Driver',
+  'installAll.kind.app': 'App',
+  'installAll.status.pending': 'Waiting',
+  'installAll.status.downloading': 'Downloading...',
+  'installAll.status.verifying': 'Verifying...',
+  'installAll.status.ready': 'Ready to install',
+  'installAll.status.installing': 'Installer open...',
+  'installAll.status.done': 'Installed',
+  'installAll.status.failed': 'Not installed',
+
+  // High-risk bloatware
+  'bloat.highRiskNote':
+    'Apps many people use without knowing it. Before removing them, DriWin creates a Windows restore point so you can go back.',
+  'bloat.restore.confirmNote':
+    'You chose high-risk apps: a Windows restore point will be created first (it asks for administrator permission and, if System Protection is off, DriWin turns it on). If it cannot be created, nothing is removed.',
+  'bloat.restore.running': 'Creating a restore point... accept the Windows prompt.',
+  'bloat.restore.short': 'Creating backup...',
+  'bloat.restore.failed': 'The restore point could not be created, so nothing was removed.',
+
+  // Health check
+  'health.title': 'Health check',
+  'health.intro':
+    'Tools to keep your PC tidy and safe. Each one asks for administrator permission once and shows you the result.',
+  'health.locked': 'The health check is part of DriWin Premium.',
+  'health.desktopOnly': 'Desktop app only',
+  'health.uacNote': 'Accept the Windows prompt to continue.',
+  'health.backup.help':
+    'Copies the drivers installed apart from the Windows ones. If a new driver causes problems, you can go back from Device Manager → Update driver → Browse my computer → the backup folder.',
+  'health.backup.change': 'Change folder',
+  'health.backup.run': 'Back up now',
+  'health.backup.running': 'Backing up...',
+  'health.backup.done': '✓ {count} drivers were backed up.',
+  'health.backup.open': 'Open folder',
+  'health.ghost.help':
+    'Windows remembers devices you once connected (USB drives, headphones, monitors). DriWin only offers to remove external devices that are not connected now; if you plug them in again, Windows recognizes them again.',
+  'health.ghost.scan': 'Check devices',
+  'health.ghost.rescan': 'Check again',
+  'health.ghost.scanning': 'Checking...',
+  'health.ghost.none': '✓ There are no disconnected devices to remove.',
+  'health.ghost.remove': 'Remove {count} selected',
+  'health.ghost.removing': 'Removing...',
+  'health.ghost.done': '✓ {removed} devices were removed.',
+  'health.ghost.someFailed': '{failed} could not be removed.',
+  'health.class.usb': 'USB device',
+  'health.class.input': 'Mouse, keyboard or controller',
+  'health.class.bluetooth': 'Bluetooth',
+  'health.class.net': 'Network adapter',
+  'health.class.monitor': 'Monitor',
+  'health.class.disk': 'USB drive or external disk',
+  'health.class.phone': 'Phone or media player',
+  'health.class.camera': 'Camera or scanner',
+  'health.class.audio': 'Audio',
+  'health.class.ports': 'Serial port (COM)',
+  'health.class.printer': 'Printer',
+  'health.class.smartcard': 'Card reader',
 };

@@ -1,10 +1,14 @@
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { app, BrowserWindow, ipcMain, net, protocol, safeStorage, shell, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, net, protocol, safeStorage, shell, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
 import { detectApps, installApp } from './appInstaller.js';
 import { isAllowedOfficialPage, splitRequestedIds } from './appPolicy.js';
 import { detectPackages, removePackages } from './bloatwareCleaner.js';
-import { splitRequestedPackages } from './bloatwarePolicy.js';
+import { isHighRiskPackage, splitRequestedPackages } from './bloatwarePolicy.js';
+import { backupDrivers } from './driverBackup.js';
+import { detectGhostDevices, removeGhostDevices, type GhostDevice } from './ghostDevices.js';
+import { parseQueueRequest, runInstallQueue } from './installQueue.js';
+import { createRestorePoint } from './restorePoint.js';
 import { installDriver } from './driverInstaller.js';
 import { scanHardware } from './hardwareScanner.js';
 import { clearSession, loadDeviceId, loadSession, saveSession } from './sessionStore.js';
@@ -79,6 +83,31 @@ let cleanupInProgress = false;
 /** Una app a la vez: winget no admite dos instalaciones en paralelo. */
 let appInstallInProgress = false;
 
+/** Funciones Premium con permisos de administrador: una a la vez. */
+let elevatedTaskInProgress = false;
+
+/** Momento del último punto de restauración confirmado (para el bloatware de riesgo alto). */
+let restorePointAt = 0;
+const RESTORE_POINT_VALID_MS = 30 * 60_000;
+
+/** Últimos dispositivos desconectados detectados: sólo esos se pueden quitar. */
+let lastGhostDevices: GhostDevice[] = [];
+
+/** Última carpeta de respaldo creada: la única que se puede abrir desde la app. */
+let lastBackupFolder: string | null = null;
+
+async function withElevatedTask<T>(work: () => Promise<T>): Promise<T> {
+  if (elevatedTaskInProgress || installInProgress) {
+    throw new Error('Ya hay otra tarea con permisos de administrador en curso');
+  }
+  elevatedTaskInProgress = true;
+  try {
+    return await work();
+  } finally {
+    elevatedTaskInProgress = false;
+  }
+}
+
 function registerIpcHandlers(): void {
   ipcMain.handle('hardware:scan', (event) => {
     if (!isTrustedSender(event)) {
@@ -91,7 +120,7 @@ function registerIpcHandlers(): void {
     if (!isTrustedSender(event)) {
       throw new Error('Origen no autorizado');
     }
-    if (installInProgress) {
+    if (installInProgress || elevatedTaskInProgress) {
       throw new Error('Ya hay una instalación en curso');
     }
     installInProgress = true;
@@ -127,6 +156,10 @@ function registerIpcHandlers(): void {
     const split = splitRequestedPackages(packageNames);
     if (!split || split.rejected.length > 0) {
       throw new Error('La limpieza incluye apps que esta versión de DriWin no permite quitar');
+    }
+    // Riesgo alto: sólo con un punto de restauración reciente.
+    if (split.allowed.some(isHighRiskPackage) && Date.now() - restorePointAt > RESTORE_POINT_VALID_MS) {
+      throw new Error('Para quitar apps de riesgo alto primero hay que crear el punto de restauración');
     }
     if (cleanupInProgress) {
       throw new Error('Ya hay una limpieza en curso');
@@ -172,6 +205,98 @@ function registerIpcHandlers(): void {
       throw new Error('Página no autorizada');
     }
     await shell.openExternal(url);
+  });
+
+  // ---------------------------------------------------------------- Premium
+  // La interfaz sólo las muestra con Premium activo. Todas piden permiso de
+  // administrador una vez y aceptan únicamente datos validados aquí.
+
+  ipcMain.handle('premium:restore-point', async (event) => {
+    if (!isTrustedSender(event)) {
+      throw new Error('Origen no autorizado');
+    }
+    return withElevatedTask(async () => {
+      const result = await createRestorePoint();
+      if (result.ok) {
+        restorePointAt = Date.now();
+      }
+      return result;
+    });
+  });
+
+  ipcMain.handle('premium:install-queue', async (event, request: unknown) => {
+    if (!isTrustedSender(event)) {
+      throw new Error('Origen no autorizado');
+    }
+    const parsed = parseQueueRequest(request);
+    if (!parsed) {
+      throw new Error('Cola de instalación inválida');
+    }
+    if (appInstallInProgress) {
+      throw new Error('Ya hay una instalación de app en curso');
+    }
+    return withElevatedTask(() =>
+      runInstallQueue(parsed, path.join(app.getPath('userData'), 'instaladores'), (items) => {
+        if (!event.sender.isDestroyed()) {
+          event.sender.send('queue:progress', items);
+        }
+      }),
+    );
+  });
+
+  ipcMain.handle('premium:backup-default-folder', (event) => {
+    if (!isTrustedSender(event)) {
+      throw new Error('Origen no autorizado');
+    }
+    return path.join(app.getPath('documents'), 'DriWin');
+  });
+
+  ipcMain.handle('premium:backup-choose-folder', async (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (!isTrustedSender(event) || !window) {
+      throw new Error('Origen no autorizado');
+    }
+    const result = await dialog.showOpenDialog(window, {
+      title: 'Carpeta para el respaldo de drivers',
+      defaultPath: path.join(app.getPath('documents'), 'DriWin'),
+      properties: ['openDirectory', 'createDirectory'],
+    });
+    return result.canceled ? null : (result.filePaths[0] ?? null);
+  });
+
+  ipcMain.handle('premium:backup-drivers', async (event, folder: unknown) => {
+    if (!isTrustedSender(event)) {
+      throw new Error('Origen no autorizado');
+    }
+    return withElevatedTask(async () => {
+      const result = await backupDrivers(folder);
+      if (result.ok) {
+        lastBackupFolder = result.folder;
+      }
+      return result;
+    });
+  });
+
+  ipcMain.handle('premium:open-backup-folder', async (event) => {
+    if (!isTrustedSender(event) || !lastBackupFolder) {
+      throw new Error('No hay un respaldo para abrir');
+    }
+    await shell.openPath(lastBackupFolder);
+  });
+
+  ipcMain.handle('premium:ghost-detect', async (event) => {
+    if (!isTrustedSender(event)) {
+      throw new Error('Origen no autorizado');
+    }
+    lastGhostDevices = await detectGhostDevices();
+    return lastGhostDevices;
+  });
+
+  ipcMain.handle('premium:ghost-remove', async (event, instanceIds: unknown) => {
+    if (!isTrustedSender(event)) {
+      throw new Error('Origen no autorizado');
+    }
+    return withElevatedTask(() => removeGhostDevices(instanceIds, lastGhostDevices));
   });
 
   // Cuenta DriWin: identificador aleatorio del equipo y sesión cifrada con DPAPI.

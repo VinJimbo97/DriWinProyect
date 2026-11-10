@@ -8,7 +8,7 @@ import {
   parseRemoveOutput,
   removePackages,
 } from './bloatwareCleaner.js';
-import { ALLOWED_PACKAGES, isAllowedPackage, splitRequestedPackages } from './bloatwarePolicy.js';
+import { ALLOWED_PACKAGES, isAllowedPackage, isHighRiskPackage, splitRequestedPackages } from './bloatwarePolicy.js';
 
 describe('lista permitida de bloatware', () => {
   it('acepta los paquetes del catálogo', () => {
@@ -16,10 +16,15 @@ describe('lista permitida de bloatware', () => {
     assert.equal(isAllowedPackage('king.com.*'), true);
   });
 
+  it('el inicio de sesión de Xbox es de riesgo alto: sólo con punto de restauración (migración 009)', () => {
+    assert.equal(isAllowedPackage('Microsoft.XboxIdentityProvider'), true);
+    assert.equal(isHighRiskPackage('Microsoft.XboxIdentityProvider'), true);
+  });
+
   for (const name of [
     'Microsoft.WindowsStore',
     'Microsoft.MicrosoftEdge',
-    'Microsoft.XboxIdentityProvider',
+    'Microsoft.DesktopAppInstaller',
     "Microsoft.BingNews'; Remove-Item C:\\",
     '*',
     'Microsoft.*',
