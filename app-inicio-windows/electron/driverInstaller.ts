@@ -196,6 +196,33 @@ export async function runElevated(filePath: string): Promise<number> {
   }
 }
 
+/** Traduce el código de salida de un instalador de drivers a un resultado. */
+export function interpretDriverExitCode(exitCode: number): DriverInstallResult {
+  if (exitCode === EXIT_OK) {
+    return { ok: true, rebootRequired: false };
+  }
+  if (exitCode === EXIT_REBOOT_REQUIRED || exitCode === EXIT_REBOOT_INITIATED) {
+    return { ok: true, rebootRequired: true };
+  }
+  if (exitCode === EXIT_UAC_DENIED) {
+    return { ok: false, code: 'UAC_DENIED', message: FAILURE_MESSAGES.UAC_DENIED };
+  }
+  if (exitCode === EXIT_USER_CANCELLED) {
+    return { ok: false, code: 'USER_CANCELLED', message: FAILURE_MESSAGES.USER_CANCELLED };
+  }
+  return {
+    ok: false,
+    code: 'INSTALLER_FAILED',
+    message: `${FAILURE_MESSAGES.INSTALLER_FAILED} Código: ${exitCode}.`,
+  };
+}
+
+/** Mensaje de un error de descarga o verificación (InstallFailure) o genérico. */
+export function failureFromError(error: unknown): DriverInstallResult {
+  const code = error instanceof InstallFailure ? error.code : 'INSTALLER_FAILED';
+  return { ok: false, code, message: FAILURE_MESSAGES[code] };
+}
+
 export interface InstallerSteps {
   download: typeof downloadAndVerify;
   verify: typeof verifySignature;
@@ -229,28 +256,9 @@ export async function installDriver(
     await steps.verify(filePath);
 
     onProgress({ driverId, stage: 'installing', percent: null });
-    const exitCode = await steps.run(filePath);
-
-    if (exitCode === EXIT_OK) {
-      return { ok: true, rebootRequired: false };
-    }
-    if (exitCode === EXIT_REBOOT_REQUIRED || exitCode === EXIT_REBOOT_INITIATED) {
-      return { ok: true, rebootRequired: true };
-    }
-    if (exitCode === EXIT_UAC_DENIED) {
-      return { ok: false, code: 'UAC_DENIED', message: FAILURE_MESSAGES.UAC_DENIED };
-    }
-    if (exitCode === EXIT_USER_CANCELLED) {
-      return { ok: false, code: 'USER_CANCELLED', message: FAILURE_MESSAGES.USER_CANCELLED };
-    }
-    return {
-      ok: false,
-      code: 'INSTALLER_FAILED',
-      message: `${FAILURE_MESSAGES.INSTALLER_FAILED} Código: ${exitCode}.`,
-    };
+    return interpretDriverExitCode(await steps.run(filePath));
   } catch (error) {
-    const code = error instanceof InstallFailure ? error.code : 'INSTALLER_FAILED';
-    return { ok: false, code, message: FAILURE_MESSAGES[code] };
+    return failureFromError(error);
   } finally {
     await rm(filePath, { force: true }).catch(() => {
       /* si Windows aún lo retiene, se reemplaza en el próximo intento */

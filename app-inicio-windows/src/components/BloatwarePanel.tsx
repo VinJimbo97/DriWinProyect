@@ -3,6 +3,7 @@ import type { ApiRequestError } from '../api/client';
 import type { BloatwareRiskLevel, BloatwareRule, ProfileName } from '../api/types';
 import { useBloatwareCleanup, installedPackages, type RuleResult } from '../hooks/useBloatwareCleanup';
 import { useBloatwareRules } from '../hooks/useBloatwareRules';
+import { desktop } from '../desktop/bridge';
 import { useSettings } from '../settings/settingsContext';
 import { HelpTip } from './HelpTip';
 
@@ -18,8 +19,11 @@ interface Props {
  * Se monta con key = perfiles: al cambiar de perfil se reinicia la selección.
  */
 export function BloatwarePanel({ profiles, profileTitle, renderApiError }: Props) {
-  const { t } = useSettings();
+  const { t, premiumActive, isFeatureEnabled } = useSettings();
   const riskLabel = (risk: BloatwareRiskLevel) => t(`bloat.risk.${risk}`);
+  // Riesgo ALTO: sólo con Premium y la función activada en Configuración.
+  const highRiskUnlocked = isFeatureEnabled('highRiskCleanup');
+  const highRiskLock = premiumActive ? t('premium.disabledInSettings') : `🔒 ${t('settings.premium.locked')}`;
   const rulesState = useBloatwareRules(profiles);
   const rules = rulesState.status === 'success' ? rulesState.data.data : null;
   const { detection, results, running, clean } = useBloatwareCleanup(rules);
@@ -27,6 +31,8 @@ export function BloatwarePanel({ profiles, profileTitle, renderApiError }: Props
   // Sólo se guardan los cambios del usuario; lo demás sale de la política del perfil.
   const [overrides, setOverrides] = useState<Map<number, boolean>>(new Map());
   const [confirming, setConfirming] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+  const [restoreMessage, setRestoreMessage] = useState<{ ok: boolean; text: string } | null>(null);
 
   if (rulesState.status === 'error') {
     return (
@@ -61,13 +67,18 @@ export function BloatwarePanel({ profiles, profileTitle, renderApiError }: Props
   );
   const notInstalledCount = detection.status === 'done' ? allRules.length - visible.length : 0;
 
-  const actionable = (rule: BloatwareRule) => !isUnsupported(rule) && results[rule.bloatware_id]?.status !== 'removed';
+  const isLockedHighRisk = (rule: BloatwareRule) => rule.risk_level === 'ALTO' && !highRiskUnlocked;
+  const actionable = (rule: BloatwareRule) =>
+    !isUnsupported(rule) && !isLockedHighRisk(rule) && results[rule.bloatware_id]?.status !== 'removed';
   const isSelected = (rule: BloatwareRule) =>
     actionable(rule) && (overrides.get(rule.bloatware_id) ?? rule.policy === 'SUGERIDO');
   const selected = visible.filter(isSelected);
 
+  const hasHighRisk = selected.some((rule) => rule.risk_level === 'ALTO');
+  const busy = running || restoring;
+
   const toggle = (rule: BloatwareRule) => {
-    if (!actionable(rule) || running) {
+    if (!actionable(rule) || busy) {
       return;
     }
     setOverrides((prev) => new Map(prev).set(rule.bloatware_id, !isSelected(rule)));
@@ -75,6 +86,26 @@ export function BloatwarePanel({ profiles, profileTitle, renderApiError }: Props
 
   const runCleanup = async () => {
     setConfirming(false);
+    setRestoreMessage(null);
+    // Antes de quitar apps de riesgo alto: punto de restauración de Windows.
+    if (hasHighRisk) {
+      if (!desktop) {
+        return;
+      }
+      setRestoring(true);
+      try {
+        const restore = await desktop.createRestorePoint();
+        setRestoreMessage({ ok: restore.ok, text: restore.message });
+        if (!restore.ok) {
+          return;
+        }
+      } catch {
+        setRestoreMessage({ ok: false, text: t('bloat.restore.failed') });
+        return;
+      } finally {
+        setRestoring(false);
+      }
+    }
     await clean(selected);
     setOverrides(new Map());
   };
@@ -96,6 +127,12 @@ export function BloatwarePanel({ profiles, profileTitle, renderApiError }: Props
           {t('bloat.infoBefore')} <span className="help-tip help-tip--inline">?</span> {t('bloat.infoAfter')}
         </p>
 
+        {restoreMessage && (
+          <p className={restoreMessage.ok ? 'bloat-info' : 'bloat-error'} role="status">
+            {restoreMessage.ok ? '✓ ' : ''}
+            {restoreMessage.text}
+          </p>
+        )}
         {detection.status === 'detecting' && <p style={{ opacity: 0.7 }}>{t('bloat.detecting')}</p>}
         {detection.status === 'error' && (
           <p className="bloat-error">{t('bloat.detectError', { message: detection.message })}</p>
@@ -113,13 +150,15 @@ export function BloatwarePanel({ profiles, profileTitle, renderApiError }: Props
             <section key={group.risk} className="bloat-group">
               <h3 className={`bloat-group__title risk-${group.risk.toLowerCase()}`}>
                 {riskLabel(group.risk)} <span>({group.rules.length})</span>
+                {group.risk === 'ALTO' && !highRiskUnlocked && <span className="lock-badge">{highRiskLock}</span>}
               </h3>
+              {group.risk === 'ALTO' && <p className="bloat-note" style={{ marginTop: -4 }}>{t('bloat.highRiskNote')}</p>}
               {group.rules.map((rule) => (
                 <BloatwareRow
                   key={rule.bloatware_id}
                   rule={rule}
                   selected={isSelected(rule)}
-                  disabled={!actionable(rule) || running}
+                  disabled={!actionable(rule) || busy}
                   unsupported={isUnsupported(rule)}
                   result={results[rule.bloatware_id]}
                   onToggle={() => toggle(rule)}
@@ -138,7 +177,9 @@ export function BloatwarePanel({ profiles, profileTitle, renderApiError }: Props
 
       <div className="bloat-footer">
         <div className="bloat-footer__status">
-          {running
+          {restoring
+            ? t('bloat.restore.running')
+            : running
             ? t('bloat.running')
             : processed.length > 0
               ? failedCount > 0
@@ -148,10 +189,10 @@ export function BloatwarePanel({ profiles, profileTitle, renderApiError }: Props
         </div>
         <button
           className="btn-action btn-danger"
-          disabled={!canClean || selected.length === 0 || running}
+          disabled={!canClean || selected.length === 0 || busy}
           onClick={() => setConfirming(true)}
         >
-          {running ? t('bloat.cleaning') : t('bloat.runCleanup')}
+          {restoring ? t('bloat.restore.short') : running ? t('bloat.cleaning') : t('bloat.runCleanup')}
         </button>
       </div>
 
@@ -162,6 +203,11 @@ export function BloatwarePanel({ profiles, profileTitle, renderApiError }: Props
               {selected.length === 1 ? t('bloat.confirmTitleOne') : t('bloat.confirmTitleMany', { count: selected.length })}
             </h2>
             <p style={{ opacity: 0.8, fontSize: '0.9rem' }}>{t('bloat.confirmText')}</p>
+            {hasHighRisk && (
+              <div className="account-warning">
+                <p style={{ margin: 0 }}>{t('bloat.restore.confirmNote')}</p>
+              </div>
+            )}
             <ul className="bloat-confirm-list">
               {selected.map((rule) => (
                 <li key={rule.bloatware_id}>

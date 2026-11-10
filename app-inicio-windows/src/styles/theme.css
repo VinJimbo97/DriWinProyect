@@ -1267,3 +1267,122 @@ textarea.text-input {
   justify-content: space-between;
   gap: 16px;
 }
+
+/* ===================== Funciones Premium ===================== */
+.tab-crown {
+  font-size: 0.75rem;
+}
+
+.install-all-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 4px 0 14px 0;
+}
+
+.install-all-dialog {
+  max-width: 680px;
+}
+
+.queue-list {
+  margin: 12px 0 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.queue-list__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--divider);
+}
+
+.queue-list__item input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0 0;
+  accent-color: var(--primary-color);
+}
+
+.queue-list__icon {
+  width: 18px;
+  text-align: center;
+  font-weight: 800;
+}
+
+.queue-list__item.is-done .queue-list__icon,
+.queue-list__item.is-done .queue-list__status {
+  color: var(--success-color);
+}
+
+.queue-list__item.is-failed .queue-list__icon,
+.queue-list__item.is-failed .queue-list__status {
+  color: var(--danger-color);
+}
+
+.queue-list__item.is-installing .queue-list__status,
+.queue-list__item.is-downloading .queue-list__status,
+.queue-list__item.is-verifying .queue-list__status {
+  color: var(--primary-color);
+}
+
+.queue-list__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.queue-list__status {
+  white-space: nowrap;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.health-card {
+  max-width: 720px;
+}
+
+.health-card h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.health-card.locked .settings-hint,
+.health-card.locked .health-folder {
+  opacity: 0.6;
+}
+
+.health-folder {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.health-folder__path {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background-color: var(--bg-color);
+  font-family: Consolas, monospace;
+  font-size: 0.8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.health-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.health-result {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}

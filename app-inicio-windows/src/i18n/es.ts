@@ -269,6 +269,78 @@ export const es = {
   'purchase.done.text': 'Tienes {plan}, vigente hasta el {date}.',
   'purchase.done.deviceNotRegistered': 'Este equipo no está entre tus 3 equipos: revisa "Mi cuenta" para usar Premium aquí.',
   'purchase.done.close': 'Empezar a usar Premium',
+  // Funciones Premium
+  'tabs.health': 'Chequeo de salud',
+  'premium.disabledInSettings': 'Desactivada en Configuración → Premium',
+
+  // Instalar todo
+  'installAll.title': 'Instalar todo',
+  'installAll.hint': 'Drivers y apps en cola: Windows pide permiso una sola vez.',
+  'installAll.desktopOnly': 'Disponible en la app de escritorio.',
+  'installAll.intro':
+    'Elige qué instalar. DriWin descarga y verifica cada driver, Windows pide permiso UNA vez y luego se abren los instaladores uno tras otro: acepta los términos de cada uno en su ventana.',
+  'installAll.nothing': '✓ No hay drivers por actualizar ni apps pendientes para tu perfil.',
+  'installAll.start': 'Instalar {count} seleccionados',
+  'installAll.runningNote':
+    'Acepta el permiso de Windows y sigue los pasos en la ventana de cada instalador. No cierres DriWin hasta que termine la cola.',
+  'installAll.summary': 'Cola terminada: {done} instalados · {failed} sin instalar.',
+  'installAll.reboot': 'Reinicia el equipo para terminar de instalar algunos drivers.',
+  'installAll.close': 'Listo',
+  'installAll.kind.driver': 'Driver',
+  'installAll.kind.app': 'App',
+  'installAll.status.pending': 'En espera',
+  'installAll.status.downloading': 'Descargando...',
+  'installAll.status.verifying': 'Verificando...',
+  'installAll.status.ready': 'Listo para instalar',
+  'installAll.status.installing': 'Instalador abierto...',
+  'installAll.status.done': 'Instalado',
+  'installAll.status.failed': 'Sin instalar',
+
+  // Bloatware de riesgo alto
+  'bloat.highRiskNote':
+    'Apps que mucha gente usa sin saberlo. Antes de quitarlas, DriWin crea un punto de restauración de Windows para que puedas volver atrás.',
+  'bloat.restore.confirmNote':
+    'Elegiste apps de riesgo alto: primero se creará un punto de restauración de Windows (pedirá permiso de administrador y, si la Protección del sistema está desactivada, DriWin la activará). Si no se puede crear, no se quita nada.',
+  'bloat.restore.running': 'Creando punto de restauración... acepta el permiso de Windows.',
+  'bloat.restore.short': 'Creando respaldo...',
+  'bloat.restore.failed': 'No se pudo crear el punto de restauración, así que no se quitó nada.',
+
+  // Chequeo de salud
+  'health.title': 'Chequeo de salud',
+  'health.intro':
+    'Herramientas para mantener tu PC ordenado y seguro. Cada una pide permiso de administrador una vez y te muestra el resultado.',
+  'health.locked': 'El chequeo de salud es parte de DriWin Premium.',
+  'health.desktopOnly': 'Solo en la app de escritorio',
+  'health.uacNote': 'Acepta el permiso de Windows para continuar.',
+  'health.backup.help':
+    'Copia los drivers que se instalaron aparte de los de Windows. Si un driver nuevo da problemas, puedes volver al anterior desde el Administrador de dispositivos → Actualizar controlador → Buscar en mi equipo → la carpeta del respaldo.',
+  'health.backup.change': 'Cambiar carpeta',
+  'health.backup.run': 'Hacer respaldo',
+  'health.backup.running': 'Respaldando...',
+  'health.backup.done': '✓ Se respaldaron {count} drivers.',
+  'health.backup.open': 'Abrir carpeta',
+  'health.ghost.help':
+    'Windows recuerda los dispositivos que alguna vez conectaste (pendrives, audífonos, monitores). DriWin solo ofrece quitar dispositivos externos que no están conectados ahora; si los vuelves a conectar, Windows los reconoce de nuevo.',
+  'health.ghost.scan': 'Revisar dispositivos',
+  'health.ghost.rescan': 'Revisar de nuevo',
+  'health.ghost.scanning': 'Revisando...',
+  'health.ghost.none': '✓ No hay dispositivos desconectados que quitar.',
+  'health.ghost.remove': 'Quitar {count} seleccionados',
+  'health.ghost.removing': 'Quitando...',
+  'health.ghost.done': '✓ Se quitaron {removed} dispositivos.',
+  'health.ghost.someFailed': '{failed} no se pudieron quitar.',
+  'health.class.usb': 'Dispositivo USB',
+  'health.class.input': 'Mouse, teclado o control',
+  'health.class.bluetooth': 'Bluetooth',
+  'health.class.net': 'Adaptador de red',
+  'health.class.monitor': 'Monitor',
+  'health.class.disk': 'Pendrive o disco externo',
+  'health.class.phone': 'Celular o reproductor',
+  'health.class.camera': 'Cámara o escáner',
+  'health.class.audio': 'Audio',
+  'health.class.ports': 'Puerto serie (COM)',
+  'health.class.printer': 'Impresora',
+  'health.class.smartcard': 'Lector de tarjetas',
 } as const;
 
 export type MessageKey = keyof typeof es;

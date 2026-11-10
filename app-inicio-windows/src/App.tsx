@@ -4,6 +4,8 @@ import { useAccount } from './account/accountContext';
 import { AccountDialog, type AccountView } from './components/AccountDialog';
 import { CrownIcon, DeviceIcon, GearIcon, UserIcon } from './components/DeviceIcon';
 import { PurchaseDialog } from './components/PurchaseDialog';
+import { HealthPanel } from './components/HealthPanel';
+import { InstallAllDialog, type QueueCandidate } from './components/InstallAllDialog';
 import { deviceKind } from './components/deviceKind';
 import { AppIcon } from './components/AppIcon';
 import type { ProfileName } from './api/types';
@@ -23,7 +25,7 @@ import { useSettings } from './settings/settingsContext';
 import './styles/theme.css';
 
 // Tipos según diagrama de flujo
-type TabType = 'driwin' | 'apps' | 'optimizar' | 'configuracion' | 'premium';
+type TabType = 'driwin' | 'apps' | 'optimizar' | 'salud' | 'configuracion' | 'premium';
 
 const FIXTURE_STORAGE_KEY = 'driwin_fixture';
 
@@ -91,13 +93,14 @@ function ApiStatus({ status, error, onRetry }: { status: string; error: ApiReque
 }
 
 export default function App() {
-  const { t } = useSettings();
+  const { t, premiumActive, isFeatureEnabled } = useSettings();
   const account = useAccount();
 
   // Cuenta: recuadro de la cuenta, plan elegido antes de iniciar sesión y compra en curso.
   const [accountDialog, setAccountDialog] = useState<AccountView | 'default' | null>(null);
   const [pendingPlan, setPendingPlan] = useState<1 | 2 | 3 | null>(null);
   const [purchaseYears, setPurchaseYears] = useState<1 | 2 | 3 | null>(null);
+  const [installAllOpen, setInstallAllOpen] = useState(false);
 
   const choosePlan = (years: 1 | 2 | 3) => {
     if (account.phase === 'signedIn') {
@@ -137,6 +140,40 @@ export default function App() {
   // Instalación real de drivers: sólo en la app de escritorio y sobre el equipo real
   const driverInstall = useDriverInstall();
   const canInstallDrivers = desktop !== undefined && fixtureId === NATIVE_SOURCE_ID;
+
+  // "Instalar todo" (Premium): drivers por actualizar con huella + apps que faltan.
+  const queueCandidates: QueueCandidate[] = [];
+  if (canInstallDrivers && driverRecs.status === 'success') {
+    const seen = new Set<number>();
+    for (const item of driverRecs.data) {
+      if (!item.ok) continue;
+      const { recommendation } = item.recommendation;
+      const state = driverUpdateState(item.device.ven_id, item.device.current_version, recommendation.version_number);
+      if (state === 'current' || !recommendation.sha256 || seen.has(recommendation.driver_id)) continue;
+      seen.add(recommendation.driver_id);
+      queueCandidates.push({
+        kind: 'driver',
+        id: String(recommendation.driver_id),
+        name: item.device.name,
+        detail: `${recommendation.edition_name} ${recommendation.version_number} · ${recommendation.file_size_mb} MB`,
+        driver: { driverId: recommendation.driver_id, downloadUrl: recommendation.download_url, sha256: recommendation.sha256 },
+      });
+    }
+  }
+  if (appInstall.available && apps.status === 'success') {
+    for (const app of apps.data.data) {
+      const id = app.winget_id;
+      if (!id || appInstall.installed[id] === true || appInstall.unsupported.has(id)) continue;
+      queueCandidates.push({ kind: 'app', id, name: app.app_name, detail: app.category });
+    }
+  }
+  const installAllLock = !desktop
+    ? t('installAll.desktopOnly')
+    : !premiumActive
+      ? t('settings.premium.locked')
+      : !isFeatureEnabled('installAll')
+        ? t('premium.disabledInSettings')
+        : null;
 
   const handleProfileToggle = (profile: ProfileName) => {
     if (selectedProfiles.includes(profile)) {
@@ -214,6 +251,14 @@ export default function App() {
           </button>
           <button className={`tab-btn ${activeTab === 'optimizar' ? 'active' : ''}`} onClick={() => setActiveTab('optimizar')}>
             {t('tabs.optimize')}
+          </button>
+          <button
+            className={`tab-btn ${activeTab === 'salud' ? 'active' : ''}`}
+            title={t('health.title')}
+            onClick={() => setActiveTab('salud')}
+          >
+            {t('tabs.health')}
+            <span className="tab-crown" aria-hidden="true">👑</span>
           </button>
         </div>
 
@@ -294,6 +339,21 @@ export default function App() {
                   {t('drivers.byProfile', { profile: activeProfileTitle })}
                 </span>
               </h2>
+
+              <div className="install-all-bar">
+                <button
+                  type="button"
+                  className="btn-action btn-premium"
+                  title={installAllLock ?? t('installAll.hint')}
+                  disabled={desktop !== undefined && premiumActive && !isFeatureEnabled('installAll')}
+                  onClick={() => (premiumActive ? setInstallAllOpen(true) : setActiveTab('premium'))}
+                >
+                  {premiumActive ? '👑' : '🔒'} {t('installAll.title')}
+                </button>
+                <span className="settings-note" style={{ margin: 0 }}>
+                  {installAllLock ?? t('installAll.hint')}
+                </span>
+              </div>
 
               {scan.status === 'success' && driverRecs.status === 'idle' && (
                 <p style={{ opacity: 0.7 }}>{t('drivers.needQuiz')}</p>
@@ -496,6 +556,9 @@ export default function App() {
           />
         )}
 
+        {/* PESTAÑA PREMIUM: CHEQUEO DE SALUD */}
+        {activeTab === 'salud' && <HealthPanel onSeePlans={() => setActiveTab('premium')} />}
+
         {/* PESTAÑA 4: CONFIGURACIÓN (apartados: General, Perfil, Premium, Avanzado) */}
         {activeTab === 'configuracion' && (
           <SettingsPanel
@@ -536,6 +599,8 @@ export default function App() {
       )}
 
       {purchaseYears && <PurchaseDialog years={purchaseYears} onClose={() => setPurchaseYears(null)} />}
+
+      {installAllOpen && <InstallAllDialog candidates={queueCandidates} onClose={() => setInstallAllOpen(false)} />}
     </div>
   );
 }
