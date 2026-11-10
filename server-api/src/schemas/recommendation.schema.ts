@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { requerido } from './zodMessages.js';
 import { pciIdSchema } from './common.schema.js';
 
 /**
@@ -8,13 +9,13 @@ import { pciIdSchema } from './common.schema.js';
  */
 
 const profileNameSchema = z
-  .string({ required_error: 'El nombre de perfil es obligatorio' })
+  .string(requerido('El nombre de perfil es obligatorio'))
   .trim()
   .min(1, 'El nombre de perfil no puede estar vacío')
   .max(50, 'El nombre de perfil no puede superar 50 caracteres');
 
 const osEnvironmentSchema = z.enum(['Win11_x64', 'Win10_x64'], {
-  errorMap: () => ({ message: 'os_environment debe ser Win11_x64 o Win10_x64' }),
+  error: 'os_environment debe ser Win11_x64 o Win10_x64',
 });
 
 const subsysIdSchema = z
@@ -83,7 +84,7 @@ export const driverRecommendationBodySchema = z
  */
 export const appsRecommendationQuerySchema = z.object({
   profiles: z
-    .string({ required_error: 'Debe indicar al menos un perfil en ?profiles=' })
+    .string(requerido('Debe indicar al menos un perfil en ?profiles='))
     .trim()
     .min(1, 'Debe indicar al menos un perfil en ?profiles= (ej. Gamer,Creator)')
     .max(400, 'La lista de perfiles es demasiado larga')

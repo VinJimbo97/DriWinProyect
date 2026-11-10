@@ -17,13 +17,13 @@ import { generateSyntheticUsers } from '../services/syntheticUser.generator.js';
 
 const argsSchema = z.object({
   count: z.coerce
-    .number({ invalid_type_error: '--count debe ser numérico' })
+    .number({ error: '--count debe ser numérico' })
     .int('--count debe ser un entero')
     .min(1, '--count debe ser al menos 1')
     .max(10_000, '--count no puede superar 10000')
     .default(100),
   seed: z.coerce
-    .number({ invalid_type_error: '--seed debe ser numérico' })
+    .number({ error: '--seed debe ser numérico' })
     .int('--seed debe ser un entero')
     .min(0, '--seed no puede ser negativo')
     .default(42),

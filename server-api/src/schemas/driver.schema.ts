@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { requerido } from './zodMessages.js';
 import {
   booleanQuerySchema,
   idParamSchema,
@@ -8,7 +9,7 @@ import {
 } from './common.schema.js';
 
 const osEnvironmentSchema = z
-  .string({ required_error: 'El sistema operativo es obligatorio' })
+  .string(requerido('El sistema operativo es obligatorio'))
   .trim()
   .min(3, 'os_environment debe tener al menos 3 caracteres')
   .max(30, 'os_environment no puede superar 30 caracteres')
@@ -18,13 +19,13 @@ const osEnvironmentSchema = z
   );
 
 const editionNameSchema = z
-  .string({ required_error: 'El nombre de la edición es obligatorio' })
+  .string(requerido('El nombre de la edición es obligatorio'))
   .trim()
   .min(2, 'edition_name debe tener al menos 2 caracteres')
   .max(120, 'edition_name no puede superar 120 caracteres');
 
 const versionNumberSchema = z
-  .string({ required_error: 'La versión es obligatoria' })
+  .string(requerido('La versión es obligatoria'))
   .trim()
   .min(1, 'version_number no puede estar vacío')
   .max(40, 'version_number no puede superar 40 caracteres');
@@ -35,13 +36,13 @@ const versionNumberSchema = z
  * `blobUrl` valida el host y construye la URL final (offloading).
  */
 const downloadUrlSchema = z
-  .string({ required_error: 'La URL de descarga es obligatoria' })
+  .string(requerido('La URL de descarga es obligatoria'))
   .trim()
   .min(3, 'La URL de descarga no puede estar vacía')
   .max(2048, 'La URL de descarga no puede superar 2048 caracteres');
 
 const fileSizeSchema = z.coerce
-  .number({ invalid_type_error: 'file_size_mb debe ser numérico' })
+  .number({ error: 'file_size_mb debe ser numérico' })
   .int('file_size_mb debe ser un entero (megabytes)')
   .positive('file_size_mb debe ser mayor que 0')
   .max(100_000, 'file_size_mb parece fuera de rango (máximo 100.000 MB)');
@@ -54,10 +55,7 @@ export const listDriverQuerySchema = paginationQuerySchema.extend({
   whql: booleanQuerySchema.optional(),
   sort: z
     .enum(['driver_id', 'release_date', 'file_size_mb', 'is_whql_certified'], {
-      errorMap: () => ({
-        message:
-          'sort debe ser driver_id, release_date, file_size_mb o is_whql_certified',
-      }),
+      error: 'sort debe ser driver_id, release_date, file_size_mb o is_whql_certified',
     })
     .default('driver_id'),
 });
@@ -78,7 +76,7 @@ export const createDriverSchema = z.object({
     .max(50, 'silent_install_flags no puede superar 50 caracteres')
     .optional(),
   is_whql_certified: z
-    .boolean({ invalid_type_error: 'is_whql_certified debe ser true o false' })
+    .boolean({ error: 'is_whql_certified debe ser true o false' })
     .optional(),
   sha256: z
     .string()

@@ -1,14 +1,15 @@
 import { z } from 'zod';
+import { requerido } from './zodMessages.js';
 import { idParamSchema, paginationQuerySchema, pciIdSchema } from './common.schema.js';
 
 const categorySchema = z
-  .string({ required_error: 'La categoría es obligatoria' })
+  .string(requerido('La categoría es obligatoria'))
   .trim()
   .min(2, 'La categoría debe tener al menos 2 caracteres (ej: GPU)')
   .max(50, 'La categoría no puede superar 50 caracteres');
 
 const commercialNameSchema = z
-  .string({ required_error: 'El nombre comercial es obligatorio' })
+  .string(requerido('El nombre comercial es obligatorio'))
   .trim()
   .min(3, 'El nombre comercial debe tener al menos 3 caracteres')
   .max(150, 'El nombre comercial no puede superar 150 caracteres');
@@ -30,9 +31,7 @@ export const listHardwareQuerySchema = paginationQuerySchema.extend({
   category: categorySchema.optional(),
   sort: z
     .enum(['component_id', 'commercial_name', 'category', 'created_at'], {
-      errorMap: () => ({
-        message: 'sort debe ser component_id, commercial_name, category o created_at',
-      }),
+      error: 'sort debe ser component_id, commercial_name, category o created_at',
     })
     .default('component_id'),
 });
@@ -66,10 +65,11 @@ export const hardwareIdParamSchema = idParamSchema;
 export const deleteHardwareQuerySchema = z.object({
   cascade: z
     .enum(['true', 'false'], {
-      errorMap: () => ({ message: 'cascade sólo admite true o false' }),
+      error: 'cascade sólo admite true o false',
     })
     .transform((value) => value === 'true')
-    .default('false'),
+    // Zod 4: el default es el valor YA transformado (booleano), no el texto de entrada.
+    .default(false),
 });
 
 export type ListHardwareQuery = z.infer<typeof listHardwareQuerySchema>;
