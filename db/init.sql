@@ -13,6 +13,11 @@
 -- ----------------------------------------------------------------------------
 -- 0. LIMPIEZA PREVIA (orden de dependencia: tablas hijas primero)
 -- ----------------------------------------------------------------------------
+DROP TABLE IF EXISTS support_tickets CASCADE;     -- FK -> accounts
+DROP TABLE IF EXISTS subscriptions CASCADE;       -- FK -> accounts, subscription_tiers
+DROP TABLE IF EXISTS account_sessions CASCADE;    -- FK -> accounts
+DROP TABLE IF EXISTS account_devices CASCADE;     -- FK -> accounts
+DROP TABLE IF EXISTS accounts CASCADE;            -- Cuentas DriWin (migración 008)
 DROP TABLE IF EXISTS bloatware_profile_policy CASCADE; -- FK -> bloatware_rules, user_profiles
 DROP TABLE IF EXISTS profile_apps CASCADE;        -- FK -> user_profiles, recommended_apps
 DROP TABLE IF EXISTS synthetic_users CASCADE;     -- FK -> subscription_tiers
@@ -158,28 +163,28 @@ CREATE TABLE bloatware_profile_policy (
         FOREIGN KEY (profile_id) REFERENCES user_profiles(profile_id) ON DELETE CASCADE
 );
 
--- 6. MATRIZ DE FINANCIAMIENTO / SUSCRIPCIONES (Hito 2)
---    1) Pase Mensual .......... B2C, $5.000 CLP, límite 3 PCs.
---    2) Compra Única .......... B2C, $30.000 CLP, 1 PC fijo, vitalicio.
---    3) Builder Pro ........... Técnico Armador / Oficinista, tarifa plana,
---                               PCs ilimitados rotativos.
---    4) Pack por Volumen ...... Instituciones B2B / Oficinista, $1.500.000 CLP,
---                               lote de 100 PCs.
---    5) Alianza OEM ........... Retail PC Factory, convenio B2B, preinstalado
---                               de fábrica.
+-- 6. PLANES DE SUSCRIPCIÓN (DriWin Premium)
+--    La versión gratis no necesita cuenta. Premium es SOLO suscripción,
+--    para hasta 3 equipos:
+--    1) DriWin Premium 1 año ... $29.990 CLP (12 meses).
+--    2) DriWin Premium 2 años .. $57.990 CLP (24 meses).
+--    3) DriWin Premium 3 años .. $84.990 CLP (36 meses).
 CREATE TABLE subscription_tiers (
     tier_id SERIAL PRIMARY KEY,
-    tier_name VARCHAR(80) NOT NULL UNIQUE,   -- Ej: 'Pase Mensual'
+    tier_name VARCHAR(80) NOT NULL UNIQUE,   -- Ej: 'DriWin Premium 1 año'
     target_persona VARCHAR(80) NOT NULL,     -- Segmento comercial receptor
-    pricing_model VARCHAR(40) NOT NULL,      -- Ej: 'Mensual', 'Única', 'Tarifa Plana'
+    pricing_model VARCHAR(40) NOT NULL,      -- 'Suscripción'
     price_clp NUMERIC(12,2),                 -- CLP; NULL cuando es tarifa plana / convenio
     max_devices INT,                         -- NULL = dispositivos ilimitados
     device_scope VARCHAR(60) NOT NULL,       -- Etiqueta legible del límite
     description TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    duration_months INT NOT NULL,            -- 12, 24 o 36 meses
     CONSTRAINT ck_tier_price CHECK (price_clp IS NULL OR price_clp >= 0),
-    CONSTRAINT ck_tier_devices CHECK (max_devices IS NULL OR max_devices > 0)
+    CONSTRAINT ck_tier_devices CHECK (max_devices IS NULL OR max_devices > 0),
+    CONSTRAINT ck_tier_duration CHECK (duration_months IN (12, 24, 36))
 );
+CREATE UNIQUE INDEX ux_tier_duration ON subscription_tiers (duration_months);
 
 -- 7. USUARIOS SINTÉTICOS (casos de prueba cubriendo toda la matriz)
 CREATE TABLE synthetic_users (
@@ -200,6 +205,74 @@ CREATE TABLE synthetic_users (
 
 -- Índice GIN para consultas rápidas sobre el array de perfiles seleccionados
 CREATE INDEX idx_synthetic_users_profiles ON synthetic_users USING GIN (selected_profiles_array);
+
+-- 8. CUENTAS DRIWIN, EQUIPOS, SESIONES, SUSCRIPCIONES Y SOPORTE (migración 008)
+--    Datos personales mínimos (Ley 21.719): el correo va cifrado (AES-256-GCM)
+--    con una huella HMAC-SHA256 para buscarlo; la contraseña, solo como hash
+--    scrypt; equipos y sesiones, solo como huellas SHA-256. La clave de cifrado
+--    vive en el servidor (DATA_ENCRYPTION_KEY), nunca en la base ni en el código.
+CREATE TABLE accounts (
+    account_id      SERIAL PRIMARY KEY,
+    email_lookup    BYTEA NOT NULL UNIQUE,      -- HMAC-SHA256 del correo normalizado
+    email_encrypted BYTEA NOT NULL,             -- AES-256-GCM (iv + tag + texto cifrado)
+    password_hash   TEXT NOT NULL,              -- scrypt$N$r$p$sal$hash
+    failed_logins   INT NOT NULL DEFAULT 0,
+    locked_until    TIMESTAMPTZ,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT ck_account_lookup_len CHECK (octet_length(email_lookup) = 32),
+    CONSTRAINT ck_account_failed CHECK (failed_logins >= 0)
+);
+
+-- Equipos de la cuenta (máximo 3; lo controla la API dentro de una transacción).
+CREATE TABLE account_devices (
+    device_id     SERIAL PRIMARY KEY,
+    account_id    INT NOT NULL REFERENCES accounts(account_id) ON DELETE CASCADE,
+    device_hash   BYTEA NOT NULL,               -- SHA-256 del identificador aleatorio del equipo
+    registered_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    last_seen_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT ux_account_device UNIQUE (account_id, device_hash),
+    CONSTRAINT ck_device_hash_len CHECK (octet_length(device_hash) = 32)
+);
+
+-- Sesiones de la app (token opaco; solo se guarda su huella).
+CREATE TABLE account_sessions (
+    session_id  SERIAL PRIMARY KEY,
+    account_id  INT NOT NULL REFERENCES accounts(account_id) ON DELETE CASCADE,
+    token_hash  BYTEA NOT NULL UNIQUE,
+    device_hash BYTEA NOT NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    expires_at  TIMESTAMPTZ NOT NULL,
+    revoked_at  TIMESTAMPTZ,
+    CONSTRAINT ck_session_expiry CHECK (expires_at > created_at)
+);
+CREATE INDEX idx_sessions_account ON account_sessions (account_id);
+
+-- Suscripciones compradas. Al borrar la cuenta quedan anónimas (registro de venta).
+CREATE TABLE subscriptions (
+    subscription_id   SERIAL PRIMARY KEY,
+    account_id        INT REFERENCES accounts(account_id) ON DELETE SET NULL,
+    tier_id           INT NOT NULL REFERENCES subscription_tiers(tier_id) ON DELETE RESTRICT,
+    starts_at         TIMESTAMPTZ NOT NULL,
+    ends_at           TIMESTAMPTZ NOT NULL,
+    price_paid_clp    NUMERIC(12,2) NOT NULL,
+    payment_reference VARCHAR(40) NOT NULL UNIQUE,  -- 'SIM-...' = pago simulado
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT ck_subscription_dates CHECK (ends_at > starts_at),
+    CONSTRAINT ck_subscription_price CHECK (price_paid_clp >= 0)
+);
+CREATE INDEX idx_subscriptions_account ON subscriptions (account_id, ends_at DESC);
+
+-- Consultas al soporte técnico (función Premium). El mensaje va cifrado.
+CREATE TABLE support_tickets (
+    ticket_id         SERIAL PRIMARY KEY,
+    account_id        INT NOT NULL REFERENCES accounts(account_id) ON DELETE CASCADE,
+    subject           VARCHAR(120) NOT NULL,
+    message_encrypted BYTEA NOT NULL,
+    status            VARCHAR(20) NOT NULL DEFAULT 'ABIERTA',
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT ck_ticket_status CHECK (status IN ('ABIERTA', 'RESPONDIDA', 'CERRADA'))
+);
+CREATE INDEX idx_tickets_account ON support_tickets (account_id);
 
 -- ============================================================================
 -- PARTE B: POBLADO MANUAL REPRESENTATIVO (CATÁLOGO SEMILLA)
@@ -546,25 +619,21 @@ INNER JOIN user_profiles p   ON p.profile_name      = x.profile_name
 ON CONFLICT (bloatware_id, profile_id) DO UPDATE SET policy = EXCLUDED.policy;
 
 -- ----------------------------------------------------------------------------
--- B.7 Insertar Matriz de Financiamiento (5 planes comerciales)
+-- B.7 Insertar Planes de Suscripción (DriWin Premium, IDs 1..3)
 -- ----------------------------------------------------------------------------
 INSERT INTO subscription_tiers
-(tier_name, target_persona, pricing_model, price_clp, max_devices, device_scope, description)
+(tier_name, target_persona, pricing_model, price_clp, max_devices, device_scope, description, duration_months)
 VALUES
-('Pase Mensual', 'Usuario Normal B2C', 'Mensual', 5000.00, 3, '3 PCs',
- 'Suscripción mensual de DriWin para usuarios normales: hasta 3 PCs por suscripción, renovación mensual en pesos chilenos.'),
-('Compra Única Vitalicia', 'Usuario Normal B2C', 'Única', 30000.00, 1, '1 PC fijo',
- 'Licencia vitalicia de pago único asociada de forma permanente a un solo PC (ligada al hardware activo).'),
-('Plan Builder Pro', 'Técnico Armador / Oficinista', 'Tarifa Plana', NULL, NULL, 'PCs Ilimitados Rotativos',
- 'Tarifa plana para técnicos armadores y perfil Office: PCs ilimitados en esquema rotativo (se liberan al concluir cada equipo).'),
-('Pack por Volumen', 'Instituciones B2B / Oficinista', 'Lote', 1500000.00, 100, 'Lote de 100 PCs',
- 'Pack institucional B2B por lote de 100 PCs (ej. colegios y municipalidades) bajo perfil Office.'),
-('Alianza OEM / Certificado', 'Retail PC Factory (OEM)', 'Convenio B2B', NULL, NULL, 'Preinstalado de fábrica',
- 'Convenio B2B con ensambladores retail: DriWin preinstalado y certificado de fábrica, sin lista de precios pública.');
+('DriWin Premium 1 año',  'Usuario final', 'Suscripción', 29990.00, 3, 'Hasta 3 equipos',
+ 'Instalar todo, limpieza de riesgo alto con respaldo, chequeo de salud y soporte técnico durante 12 meses.', 12),
+('DriWin Premium 2 años', 'Usuario final', 'Suscripción', 57990.00, 3, 'Hasta 3 equipos',
+ 'Todas las funciones Premium durante 24 meses (ahorra $1.990 frente a renovar cada año).', 24),
+('DriWin Premium 3 años', 'Usuario final', 'Suscripción', 84990.00, 3, 'Hasta 3 equipos',
+ 'Todas las funciones Premium durante 36 meses (ahorra $4.980 frente a renovar cada año).', 36);
 
 -- ----------------------------------------------------------------------------
--- B.8 Insertar Usuarios Sintéticos (6 casos que cubren toda la matriz)
---     tier_id: 1=Pase Mensual, 2=Compra Única, 3=Builder Pro, 4=Pack Volumen, 5=OEM
+-- B.8 Insertar Usuarios Sintéticos (6 casos que cubren los 3 planes)
+--     tier_id: 1=Premium 1 año, 2=Premium 2 años, 3=Premium 3 años (máx. 3 equipos)
 -- ----------------------------------------------------------------------------
 INSERT INTO synthetic_users
 (full_name, email, user_role_type, tier_id, selected_profiles_array, active_devices_count)
@@ -573,8 +642,8 @@ VALUES
 ('Camila Rojas',            'camila.rojas@correo-driwin.cl',         'Creator',                2, ARRAY['Creator'],               1),
 ('Diego Salazar',           'diego.salazar@correo-driwin.cl',        'Híbrido Gamer + Creator', 1, ARRAY['Gamer', 'Creator'],      3),
 ('Valentina Muñoz',         'valentina.munoz@correo-driwin.cl',      'Developer',              2, ARRAY['Developer'],             1),
-('Rodrigo Contreras',       'rodrigo.contreras@correo-driwin.cl',    'Técnico Armador',        3, ARRAY['Office'],               12),
-('Institución Educativa Municipal Los Alerces', 'sistemas@iec-alerces.cl', 'Institución Educativa', 4, ARRAY['Office'],         100);
+('Rodrigo Contreras',       'rodrigo.contreras@correo-driwin.cl',    'Técnico Armador',        3, ARRAY['Office'],                3),
+('Fernanda Soto',           'fernanda.soto@correo-driwin.cl',        'Oficinista',             3, ARRAY['Office'],                1);
 
 -- ============================================================================
 -- CONSULTAS SQL DE PRUEBA (HITO 2) - DEMOSTRACIÓN DE APLICACIONES COMBINADAS

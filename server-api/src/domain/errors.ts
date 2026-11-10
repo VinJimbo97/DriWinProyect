@@ -17,6 +17,14 @@ export const ErrorCode = {
   PAYLOAD_TOO_LARGE: 'PAYLOAD_TOO_LARGE',
   INTERNAL_ERROR: 'INTERNAL_ERROR',
   DB_UNAVAILABLE: 'DB_UNAVAILABLE',
+  /** La cuenta ya tiene sus 3 equipos registrados (HTTP 409). */
+  DEVICE_LIMIT_REACHED: 'DEVICE_LIMIT_REACHED',
+  /** La función necesita una suscripción Premium activa en este equipo (HTTP 403). */
+  PREMIUM_REQUIRED: 'PREMIUM_REQUIRED',
+  /** Demasiados intentos fallidos: la cuenta queda bloqueada unos minutos (HTTP 429). */
+  ACCOUNT_LOCKED: 'ACCOUNT_LOCKED',
+  /** El servidor no tiene configurada la clave de cifrado de cuentas (HTTP 503). */
+  ACCOUNTS_DISABLED: 'ACCOUNTS_DISABLED',
 } as const;
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];

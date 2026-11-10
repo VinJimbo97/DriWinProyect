@@ -2,6 +2,7 @@ import { timingSafeEqual } from 'node:crypto';
 import type { Request, RequestHandler } from 'express';
 import { env } from '../config/env.js';
 import { ApiError, ErrorCode } from '../domain/errors.js';
+import { SESSION_TOKEN_PREFIX } from '../security/crypto.js';
 
 export type ApiRole = 'read-write' | 'read-only';
 
@@ -13,7 +14,9 @@ function extractApiKey(req: Request): string | null {
 
   const authorization = req.header('Authorization');
   if (authorization?.startsWith('Bearer ')) {
-    return authorization.slice('Bearer '.length).trim();
+    const token = authorization.slice('Bearer '.length).trim();
+    // Los tokens de sesión de las cuentas (dws_...) los valida requireSession.
+    return token.startsWith(SESSION_TOKEN_PREFIX) ? null : token;
   }
 
   return null;
