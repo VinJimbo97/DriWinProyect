@@ -120,3 +120,13 @@ export function CrownIcon() {
     </svg>
   );
 }
+
+/** Ícono de cuenta (persona), mismo trazo que el engranaje y la corona. */
+export function UserIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21a8 8 0 0 1 16 0" />
+    </svg>
+  );
+}

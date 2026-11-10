@@ -1,12 +1,13 @@
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { app, BrowserWindow, ipcMain, net, protocol, shell, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
+import { app, BrowserWindow, ipcMain, net, protocol, safeStorage, shell, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
 import { detectApps, installApp } from './appInstaller.js';
 import { isAllowedOfficialPage, splitRequestedIds } from './appPolicy.js';
 import { detectPackages, removePackages } from './bloatwareCleaner.js';
 import { splitRequestedPackages } from './bloatwarePolicy.js';
 import { installDriver } from './driverInstaller.js';
 import { scanHardware } from './hardwareScanner.js';
+import { clearSession, loadDeviceId, loadSession, saveSession } from './sessionStore.js';
 import type { DriverInstallRequest } from './installerPolicy.js';
 
 /**
@@ -171,6 +172,37 @@ function registerIpcHandlers(): void {
       throw new Error('Página no autorizada');
     }
     await shell.openExternal(url);
+  });
+
+  // Cuenta DriWin: identificador aleatorio del equipo y sesión cifrada con DPAPI.
+  const accountDir = () => path.join(app.getPath('userData'), 'cuenta');
+
+  ipcMain.handle('account:device-id', (event) => {
+    if (!isTrustedSender(event)) {
+      throw new Error('Origen no autorizado');
+    }
+    return loadDeviceId(accountDir());
+  });
+
+  ipcMain.handle('account:load-session', (event) => {
+    if (!isTrustedSender(event)) {
+      throw new Error('Origen no autorizado');
+    }
+    return loadSession(accountDir(), safeStorage);
+  });
+
+  ipcMain.handle('account:save-session', (event, token: unknown) => {
+    if (!isTrustedSender(event)) {
+      throw new Error('Origen no autorizado');
+    }
+    return saveSession(accountDir(), token, safeStorage);
+  });
+
+  ipcMain.handle('account:clear-session', (event) => {
+    if (!isTrustedSender(event)) {
+      throw new Error('Origen no autorizado');
+    }
+    return clearSession(accountDir());
   });
 
   ipcMain.on('window:minimize', (event) => {

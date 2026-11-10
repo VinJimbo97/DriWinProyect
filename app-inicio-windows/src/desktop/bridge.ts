@@ -55,6 +55,13 @@ export interface DriwinDesktopBridge {
   installDriver(request: DriverInstallRequest): Promise<DriverInstallResult>;
   /** Devuelve la función que cancela la suscripción. */
   onDriverInstallProgress(listener: (progress: DriverInstallProgress) => void): () => void;
+  /** Identificador aleatorio de este equipo (para el límite de 3 equipos). */
+  getDeviceId(): Promise<string>;
+  /** Sesión de la cuenta guardada cifrada con DPAPI; null si no hay. */
+  loadSession(): Promise<string | null>;
+  /** Devuelve false si Windows no permite cifrar (la sesión dura sólo esta vez). */
+  saveSession(token: string): Promise<boolean>;
+  clearSession(): Promise<void>;
   minimizeWindow(): void;
   toggleMaximizeWindow(): void;
   closeWindow(): void;

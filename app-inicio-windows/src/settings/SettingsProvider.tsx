@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { useAccount } from '../account/accountContext';
 import { createTranslator } from '../i18n/translate';
 import {
   parseSettings,
@@ -10,12 +11,6 @@ import {
   type ThemePreference,
 } from './settings';
 import { SettingsContext, type SettingsContextValue } from './settingsContext';
-
-/**
- * Suscripción Premium del equipo. Todavía no existen cuentas ni compras:
- * queda en false hasta implementar la licencia firmada por el servidor.
- */
-const PREMIUM_ACTIVE = false;
 
 const DARK_QUERY = '(prefers-color-scheme: dark)';
 
@@ -40,6 +35,8 @@ function systemPrefersDark(): boolean {
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<Settings>(loadSettings);
+  // Premium activo = suscripción vigente en la cuenta Y este equipo dentro de los 3.
+  const { premiumActive } = useAccount();
   const prefersDark = useSyncExternalStore(subscribeToSystemTheme, systemPrefersDark);
   const resolvedTheme = resolveTheme(settings.theme, prefersDark);
 
@@ -71,14 +68,14 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     () => ({
       settings,
       resolvedTheme,
-      premiumActive: PREMIUM_ACTIVE,
+      premiumActive,
       t: createTranslator(settings.language),
       setLanguage,
       setTheme,
       setPremiumFeature,
-      isFeatureEnabled: (feature) => PREMIUM_ACTIVE && settings.premiumFeatures[feature],
+      isFeatureEnabled: (feature) => premiumActive && settings.premiumFeatures[feature],
     }),
-    [settings, resolvedTheme, setLanguage, setTheme, setPremiumFeature],
+    [settings, resolvedTheme, premiumActive, setLanguage, setTheme, setPremiumFeature],
   );
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;

@@ -994,3 +994,276 @@ body {
   color: var(--success-color);
   font-weight: 700;
 }
+
+/* ===================== Cuenta DriWin ===================== */
+.account-btn {
+  position: relative;
+}
+
+/* Punto sobre el ícono: sesión iniciada (turquesa) o Premium activo (dorado) */
+.account-dot {
+  position: absolute;
+  top: 12px;
+  right: 9px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--surface-color);
+  border-radius: 50%;
+  background-color: var(--primary-color);
+}
+
+.account-dot.premium {
+  background-color: var(--warning-color);
+}
+
+.account-dialog {
+  position: relative;
+  max-height: calc(100% - 40px);
+  overflow-y: auto;
+  scrollbar-color: rgba(0, 173, 181, 0.55) transparent;
+  scrollbar-width: thin;
+}
+
+.account-dialog .settings-card {
+  background-color: var(--bg-color);
+}
+
+.account-dialog .settings-card h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.account-dialog form .settings-note {
+  margin-bottom: 14px;
+}
+
+.dialog-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-color);
+  font-size: 1rem;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.dialog-close:hover {
+  background-color: var(--muted-soft);
+  opacity: 1;
+}
+
+.account-tabs {
+  display: flex;
+}
+
+.account-tabs button {
+  flex: 1;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.form-field__label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.form-field__error,
+.form-error {
+  color: var(--danger-color);
+  font-size: 0.8rem;
+}
+
+.form-error {
+  margin: 0 0 12px 0;
+}
+
+.text-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--divider);
+  border-radius: 6px;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font: inherit;
+  font-size: 0.92rem;
+  user-select: text;
+}
+
+textarea.text-input {
+  resize: vertical;
+  min-height: 110px;
+}
+
+.text-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(0, 173, 181, 0.25);
+}
+
+.text-input[aria-invalid='true'] {
+  border-color: var(--danger-color);
+}
+
+.password-input {
+  position: relative;
+}
+
+.password-input .text-input {
+  padding-right: 76px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  padding: 4px 10px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--primary-color);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.password-toggle:hover {
+  background-color: rgba(0, 173, 181, 0.12);
+}
+
+.btn-action.btn-primary-fill {
+  width: 100%;
+  padding: 11px;
+  border-color: var(--primary-color);
+  background-color: var(--primary-color);
+  color: var(--on-primary);
+}
+
+.btn-action.btn-primary-fill:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.btn-action.btn-danger-outline {
+  border-color: var(--danger-color);
+  color: var(--danger-color);
+}
+
+.btn-action.btn-danger-outline:hover:not(:disabled) {
+  background-color: var(--danger-color);
+  color: #fff;
+}
+
+.link-button {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--primary-color);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.link-button:hover {
+  text-decoration: underline;
+}
+
+.account-warning {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 14px 0;
+  padding: 10px 14px;
+  border-left: 3px solid var(--warning-color);
+  border-radius: 6px;
+  background-color: rgba(255, 211, 42, 0.1);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.device-list {
+  margin: 10px 0 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.device-list__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--divider);
+}
+
+.device-list__current {
+  margin-left: 8px;
+  padding: 1px 8px;
+  border: 1px solid var(--primary-color);
+  border-radius: 999px;
+  color: var(--primary-color);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.device-list__confirm {
+  display: flex;
+  gap: 8px;
+}
+
+.account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.account-delete-list {
+  margin: 0 0 10px 0;
+  padding-left: 20px;
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+.plan-status__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.premium-current {
+  max-width: 760px;
+  margin: 0 auto 20px auto;
+  padding: 10px 14px;
+  border: 1px solid var(--warning-color);
+  border-radius: 8px;
+  color: var(--warning-color);
+  font-weight: 600;
+}
+
+.premium-current.warning {
+  font-weight: 400;
+  color: var(--text-color);
+}
+
+.purchase-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
