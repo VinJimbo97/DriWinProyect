@@ -39,7 +39,7 @@ jobs:
 
     steps:
       - name: Descargar el código
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Instalar Node 24 (misma versión que el App Service)
         uses: actions/setup-node@v4
