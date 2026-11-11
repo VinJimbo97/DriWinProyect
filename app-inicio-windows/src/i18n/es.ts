@@ -200,8 +200,6 @@ export const es = {
   'account.register.tab': 'Crear cuenta',
   'account.register.title': 'Crea tu cuenta DriWin',
   'account.register.submit': 'Crear cuenta',
-  'account.register.privacy':
-    'Solo guardamos tu correo (cifrado) y tu contraseña protegida. Puedes borrar tus datos cuando quieras desde "Mi cuenta".',
   'account.email': 'Correo',
   'account.password': 'Contraseña',
   'account.password.help':
@@ -251,6 +249,59 @@ export const es = {
   'account.delete.local': 'Tus preferencias de este equipo (idioma, tema y perfil) no se tocan.',
   'account.delete.password': 'Escribe tu contraseña para confirmar',
   'account.delete.submit': 'Borrar definitivamente',
+
+  // Descargar mis datos (acceso y portabilidad, Ley 21.719)
+  'account.export.open': 'Descargar mis datos',
+  'account.export.hint': 'Guarda en un archivo una copia de todo lo que DriWin tiene de tu cuenta.',
+  'account.export.working': 'Preparando tus datos...',
+  'account.export.saved': 'Tus datos se guardaron en: {path}',
+  'account.export.cancelled': 'No se guardó el archivo.',
+
+  // Aviso de privacidad (Ley 19.628 / Ley 21.719)
+  'privacy.open': 'Aviso de privacidad',
+  'privacy.title': 'Aviso de privacidad de DriWin',
+  'privacy.version': 'Versión {version}',
+  'privacy.intro':
+    'Aquí te contamos qué datos usa DriWin, para qué y qué puedes hacer con ellos, según la Ley 19.628 y la Ley 21.719 de protección de datos personales de Chile.',
+  'privacy.who.title': '¿Quién es responsable de tus datos?',
+  'privacy.who.body':
+    'DriWin, un proyecto académico desarrollado en Chile. Contacto para temas de privacidad: {email} (dirección de demostración en esta versión).',
+  'privacy.noAccount.title': 'Si usas DriWin sin cuenta (versión gratis)',
+  'privacy.noAccount.body':
+    '• El escaneo de tu hardware se hace solo en tu PC.\n• Para recomendarte drivers, la app envía a nuestro servidor los códigos de modelo de tus dispositivos (por ejemplo, VEN_8086 DEV_51F0), tu versión de Windows y el perfil que elegiste. No incluyen tu nombre, el nombre del PC ni números de serie, y no se guardan.\n• Tus preferencias (idioma, tema y perfil) quedan solo en este equipo.\n• Para frenar abusos, el servidor usa tu dirección IP en memoria durante unos minutos. No la guarda.',
+  'privacy.account.title': 'Si creas una cuenta (DriWin Premium)',
+  'privacy.account.body':
+    '• Tu correo, guardado cifrado.\n• Tu contraseña, solo como una huella que no se puede revertir (nunca la contraseña).\n• Tus equipos (hasta 3), como un código aleatorio que crea la app: sin nombre del PC ni datos del hardware.\n• Tus sesiones abiertas y sus fechas.\n• Tus compras: plan, fechas, monto y referencia. En esta versión el pago es simulado: no pedimos datos de tarjeta.\n• Tus consultas al soporte técnico, con el mensaje cifrado.\n• Qué versión de este aviso aceptaste y cuándo.',
+  'privacy.purpose.title': '¿Para qué los usamos?',
+  'privacy.purpose.body':
+    'Solo para crear y proteger tu cuenta, activar Premium en tus equipos, responder tus consultas y llevar el registro de ventas. No los usamos para publicidad, no los vendemos ni los compartimos con otras empresas, y no tomamos decisiones automáticas sobre ti.',
+  'privacy.legalBasis.title': '¿Por qué podemos usarlos?',
+  'privacy.legalBasis.body':
+    'Porque tú lo aceptas al crear la cuenta (consentimiento) y porque son necesarios para darte el servicio Premium que contratas. Puedes retirar tu consentimiento cuando quieras borrando tu cuenta.',
+  'privacy.where.title': '¿Dónde se guardan?',
+  'privacy.where.body':
+    'En Microsoft Azure, que presta la infraestructura bajo nuestras instrucciones (encargado del tratamiento). Los servidores están en Canadá, así que tus datos se transfieren fuera de Chile. La conexión siempre va cifrada (HTTPS).',
+  'privacy.retention.title': '¿Cuánto tiempo los guardamos?',
+  'privacy.retention.body':
+    'Mientras exista tu cuenta. Las sesiones vencen a los 30 días. Si borras tu cuenta, se eliminan de inmediato tu correo, tu contraseña, tus equipos, tus sesiones y tus consultas. Las compras quedan solo como un registro de venta anónimo, sin ningún dato tuyo.',
+  'privacy.security.title': '¿Cómo los protegemos?',
+  'privacy.security.body':
+    'Correo y consultas cifrados (AES-256-GCM), contraseñas protegidas con scrypt, conexión HTTPS, permisos mínimos en la base de datos y bloqueo temporal después de 5 intentos fallidos de inicio de sesión. En tu PC, la sesión se guarda cifrada por Windows.',
+  'privacy.rights.title': 'Tus derechos',
+  'privacy.rights.body':
+    'Puedes acceder a tus datos, corregirlos, borrarlos, oponerte a su uso, pedir que se bloqueen y llevártelos (portabilidad). Desde "Mi cuenta":\n• "Descargar mis datos" te entrega una copia de todo en un archivo.\n• "Borrar mis datos" elimina tu cuenta.\nPara lo demás (por ejemplo, corregir tu correo), escríbenos a {email}. Si no quedas conforme con la respuesta, puedes reclamar ante la Agencia de Protección de Datos Personales.',
+  'privacy.changes.title': 'Si este aviso cambia',
+  'privacy.changes.body':
+    'Te lo mostraremos en la app y te pediremos aceptarlo de nuevo en "Mi cuenta". La versión de arriba indica la fecha del aviso vigente.',
+  'privacy.consent': 'Leí y acepto el aviso de privacidad',
+  'privacy.consent.required': 'Debes aceptar el aviso de privacidad para crear la cuenta.',
+  'privacy.read': 'Leer el aviso',
+  'privacy.outdated.title': 'Actualizamos el aviso de privacidad',
+  'privacy.outdated.body': 'Para seguir usando tu cuenta, lee el aviso vigente y acéptalo.',
+  'privacy.outdated.accept': 'Leí y acepto',
+  'privacy.acceptedOn': 'Aceptaste el aviso de privacidad (versión {version}) el {date}.',
+  'privacy.settings.body':
+    'DriWin funciona sin cuenta y sin guardar tus datos. Lee aquí qué se usa, para qué y cuáles son tus derechos.',
 
   // Compra (pago simulado)
   'premium.current.active': '👑 Tienes {plan}, vigente hasta el {date}.',

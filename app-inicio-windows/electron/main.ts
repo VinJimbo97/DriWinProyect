@@ -1,9 +1,11 @@
+import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { app, BrowserWindow, dialog, ipcMain, net, protocol, safeStorage, shell, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
 import { detectApps, installApp } from './appInstaller.js';
 import { isAllowedOfficialPage, splitRequestedIds } from './appPolicy.js';
 import { detectPackages, removePackages } from './bloatwareCleaner.js';
+import { checkExportContent, exportFileName } from './dataExport.js';
 import { isHighRiskPackage, splitRequestedPackages } from './bloatwarePolicy.js';
 import { backupDrivers } from './driverBackup.js';
 import { detectGhostDevices, removeGhostDevices, type GhostDevice } from './ghostDevices.js';
@@ -328,6 +330,28 @@ function registerIpcHandlers(): void {
       throw new Error('Origen no autorizado');
     }
     return clearSession(accountDir());
+  });
+
+  // "Descargar mis datos": la persona elige dónde guardar; la interfaz sólo entrega el JSON.
+  ipcMain.handle('account:save-export', async (event, content: unknown) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (!isTrustedSender(event) || !window) {
+      throw new Error('Origen no autorizado');
+    }
+    const checked = checkExportContent(content);
+    if (!checked.ok) {
+      return { ok: false, code: 'INVALID_CONTENT', message: checked.message };
+    }
+    const result = await dialog.showSaveDialog(window, {
+      title: 'Guardar mis datos de DriWin',
+      defaultPath: path.join(app.getPath('documents'), exportFileName(new Date())),
+      filters: [{ name: 'JSON', extensions: ['json'] }],
+    });
+    if (result.canceled || !result.filePath) {
+      return { ok: false, code: 'CANCELLED', message: 'No se guardó el archivo.' };
+    }
+    await writeFile(result.filePath, checked.content, 'utf8');
+    return { ok: true, path: result.filePath };
   });
 
   ipcMain.on('window:minimize', (event) => {

@@ -1386,3 +1386,53 @@ textarea.text-input {
   gap: 12px;
   margin-top: 12px;
 }
+
+/* ---------------------------------------------------------------------------
+   Aviso de privacidad (Ley 19.628 / 21.719) y casilla de consentimiento
+   --------------------------------------------------------------------------- */
+.privacy-notice section {
+  margin-bottom: 14px;
+}
+
+.privacy-notice h3 {
+  margin: 0 0 4px 0;
+  font-size: 0.95rem;
+  color: var(--primary-color);
+}
+
+.privacy-notice p {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  white-space: pre-line; /* las viñetas vienen como saltos de línea en i18n */
+}
+
+.privacy-notice__version {
+  font-size: 0.8rem;
+  opacity: 0.7;
+  margin: 0 0 10px 0;
+}
+
+.privacy-dialog {
+  position: relative;
+  max-height: calc(100% - 40px);
+  overflow-y: auto;
+  scrollbar-color: rgba(0, 173, 181, 0.55) transparent;
+  scrollbar-width: thin;
+}
+
+.consent-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 14px 0;
+  font-size: 0.9rem;
+}
+
+.consent-check input[type='checkbox'] {
+  margin-top: 3px;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary-color);
+  flex-shrink: 0;
+}

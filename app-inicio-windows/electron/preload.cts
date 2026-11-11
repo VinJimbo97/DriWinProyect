@@ -36,6 +36,7 @@ contextBridge.exposeInMainWorld('driwin', {
   loadSession: () => ipcRenderer.invoke('account:load-session'),
   saveSession: (token: unknown) => ipcRenderer.invoke('account:save-session', token),
   clearSession: () => ipcRenderer.invoke('account:clear-session'),
+  saveAccountExport: (content: unknown) => ipcRenderer.invoke('account:save-export', content),
   minimizeWindow: () => ipcRenderer.send('window:minimize'),
   toggleMaximizeWindow: () => ipcRenderer.send('window:toggle-maximize'),
   closeWindow: () => ipcRenderer.send('window:close'),

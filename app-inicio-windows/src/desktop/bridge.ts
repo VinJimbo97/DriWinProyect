@@ -82,6 +82,10 @@ export type GhostRemovalResult =
   | { ok: true; removed: number; failed: number }
   | { ok: false; code: string; message: string };
 
+export type SaveExportResult =
+  | { ok: true; path: string }
+  | { ok: false; code: 'CANCELLED' | 'INVALID_CONTENT'; message: string };
+
 export interface DriwinDesktopBridge {
   createRestorePoint(): Promise<RestorePointResult>;
   installQueue(request: QueueRequest): Promise<QueueItem[]>;
@@ -110,6 +114,8 @@ export interface DriwinDesktopBridge {
   /** Devuelve false si Windows no permite cifrar (la sesión dura sólo esta vez). */
   saveSession(token: string): Promise<boolean>;
   clearSession(): Promise<void>;
+  /** "Descargar mis datos": abre el diálogo de Guardar y escribe el JSON. */
+  saveAccountExport(content: string): Promise<SaveExportResult>;
   minimizeWindow(): void;
   toggleMaximizeWindow(): void;
   closeWindow(): void;

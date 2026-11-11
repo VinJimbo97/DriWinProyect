@@ -18,6 +18,10 @@ export interface AccountContextValue {
   registerThisDevice(): Promise<void>;
   removeDevice(deviceId: number): Promise<void>;
   deleteAccount(password: string): Promise<void>;
+  /** Acepta el aviso de privacidad vigente. */
+  acceptPrivacy(): Promise<void>;
+  /** "Descargar mis datos": devuelve el JSON con todo lo que guarda la API. */
+  exportData(): Promise<unknown>;
   sendSupportTicket(subject: string, message: string): Promise<SupportTicketResult>;
 }
 
