@@ -15,11 +15,9 @@ const envSchema = z
     API_BASE_PATH: z.string().startsWith('/').default('/api/v1'),
 
     // Seguridad / CORS / tasa
+    // Única clave de la API: administración del catálogo (escrituras). Nunca va en la app.
+    // (La antigua API_KEY_READ_ONLY se eliminó: estuvo embebida en el .exe y se revocó.)
     API_KEY: z.string().min(16, 'API_KEY debe tener al menos 16 caracteres'),
-    API_KEY_READ_ONLY: z.preprocess(
-      (value) => (value === '' || value === undefined ? undefined : value),
-      z.string().min(16, 'API_KEY_READ_ONLY debe tener al menos 16 caracteres').optional(),
-    ),
     // app://driwin = origen de la app de escritorio (Electron, ver electron/main.ts).
     ALLOWED_ORIGINS: z
       .string()

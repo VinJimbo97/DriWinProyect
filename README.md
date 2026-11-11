@@ -215,8 +215,7 @@ npm run dev           # http://localhost:5173
    [`docs/postman/DriWin_Hito2.postman_collection.json`](./docs/postman/DriWin_Hito2.postman_collection.json).
 2. Editar las variables de colección:
    * `baseUrl` = `http://localhost:3000/api/v1`
-   * `apiKey` = la misma `API_KEY` del `server-api/.env`
-   * `readOnlyKey` = opcional, la misma `API_KEY_READ_ONLY`
+   * `apiKey` = la misma `API_KEY` del `server-api/.env` (única clave; las lecturas son públicas)
 
    Para usar la API de Azure, importar también
    [`docs/postman/DriWin_Azure.postman_environment.json`](./docs/postman/DriWin_Azure.postman_environment.json)

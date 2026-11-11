@@ -4,7 +4,6 @@ import { app } from '../src/app';
 import { closePool } from '../src/config/db';
 
 const API_KEY = process.env.API_KEY as string;
-const READ_ONLY_KEY = process.env.API_KEY_READ_ONLY as string;
 const validHardware = {
   ven_id: '1002',
   dev_id: '1638',
@@ -33,13 +32,17 @@ describe('Contrato HTTP /api/v1 (sin base de datos)', () => {
     expect(res.body.error.code).toBe('UNAUTHORIZED');
   });
 
-  it('devuelve 403 si la clave es de sólo lectura en una escritura', async () => {
-    const res = await request(app)
-      .post('/api/v1/bloatware-rules')
-      .set('X-API-Key', READ_ONLY_KEY)
-      .send({});
-    expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('FORBIDDEN');
+  it('una clave revocada (como la de sólo lectura de un .exe antiguo) se rechaza incluso en lecturas públicas', async () => {
+    // Sin clave, la lectura es pública: llega a la validación (400 por ven_id inválido, sin tocar la BD).
+    const anonymous = await request(app).get('/api/v1/hardware-components?ven_id=AMD');
+    expect(anonymous.status).toBe(400);
+
+    // Con una clave que ya no existe, se corta antes con 401: nunca se ignora en silencio.
+    const revoked = await request(app)
+      .get('/api/v1/hardware-components?ven_id=AMD')
+      .set('X-API-Key', 'clave_revocada_de_solo_lectura_123');
+    expect(revoked.status).toBe(401);
+    expect(revoked.body.error.code).toBe('UNAUTHORIZED');
   });
 
   it('devuelve 400 con detalle campo a campo para ven_id inválido', async () => {

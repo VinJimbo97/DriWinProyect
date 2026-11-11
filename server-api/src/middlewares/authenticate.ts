@@ -4,7 +4,12 @@ import { env } from '../config/env.js';
 import { ApiError, ErrorCode } from '../domain/errors.js';
 import { SESSION_TOKEN_PREFIX } from '../security/crypto.js';
 
-export type ApiRole = 'read-write' | 'read-only';
+/**
+ * Un solo rol: la clave de administración (API_KEY) para escribir en el catálogo.
+ * Las lecturas son públicas. La antigua clave de sólo lectura se eliminó porque
+ * estuvo embebida en el .exe (credencial expuesta → revocada).
+ */
+export type ApiRole = 'read-write';
 
 function extractApiKey(req: Request): string | null {
   const headerKey = req.header('X-API-Key');
@@ -40,19 +45,15 @@ function safeEquals(provided: string, expected: string): boolean {
 }
 
 function resolveRole(key: string): ApiRole | null {
-  if (safeEquals(key, env.API_KEY)) {
-    return 'read-write';
-  }
-  if (env.API_KEY_READ_ONLY && safeEquals(key, env.API_KEY_READ_ONLY)) {
-    return 'read-only';
-  }
-  return null;
+  return safeEquals(key, env.API_KEY) ? 'read-write' : null;
 }
 
 /**
  * Autenticación opcional: si viene una credencial, la valida y deja el rol en
  * `req.apiRole`. Si no viene, la petición sigue como anónima y las rutas de
  * escritura la rechazan con `requireWriteAccess`.
+ * Una credencial que SÍ viene pero es inválida (p. ej. la clave revocada de un
+ * .exe antiguo) se rechaza con 401 en cualquier ruta: nunca se ignora en silencio.
  */
 export const authenticate: RequestHandler = (req, _res, next) => {
   const key = extractApiKey(req);
@@ -80,23 +81,6 @@ export const authenticate: RequestHandler = (req, _res, next) => {
   next();
 };
 
-/** Exige una credencial válida (cualquier rol). */
-export const requireApiKey: RequestHandler = (req, _res, next) => {
-  if (!req.apiRole) {
-    next(
-      new ApiError(
-        401,
-        ErrorCode.UNAUTHORIZED,
-        'Credencial ausente',
-        undefined,
-        'Incluya X-API-Key (o Authorization: Bearer <clave>) para consumir este recurso.',
-      ),
-    );
-    return;
-  }
-  next();
-};
-
 /** Exige permiso de escritura: POST, PUT, PATCH y DELETE. */
 export const requireWriteAccess: RequestHandler = (req, _res, next) => {
   if (!req.apiRole) {
@@ -107,19 +91,6 @@ export const requireWriteAccess: RequestHandler = (req, _res, next) => {
         'Credencial ausente',
         undefined,
         'Las operaciones de escritura requieren X-API-Key con permiso de escritura.',
-      ),
-    );
-    return;
-  }
-
-  if (req.apiRole !== 'read-write') {
-    next(
-      new ApiError(
-        403,
-        ErrorCode.FORBIDDEN,
-        'La credencial es de sólo lectura',
-        undefined,
-        'Solicite una clave con rol read-write para crear, actualizar o eliminar recursos.',
       ),
     );
     return;

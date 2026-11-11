@@ -2,13 +2,12 @@
   "info": {
     "_postman_id": "d4f0c7a2-6f1b-4a3e-9c2d-driwinhito2001",
     "name": "DriWin Hito 2 — API REST /api/v1",
-    "description": "Colección oficial de pruebas del Back-End DriWin (Hito 2). Cubre health, CRUD completo de hardware-components, CRUD de driver-packages, CRUD de bloatware-rules, los endpoints de negocio recommendations/driver y recommendations/apps, y los casos de error del contrato (400/401/403/404/409/422).\n\nAntes de ejecutar:\n1. Levantar la API: cd server-api && npm run dev\n2. Ejecutar db/init.sql sobre driwin_catalog\n3. Configurar las variables de colección: baseUrl, apiKey (rol read-write) y readOnlyKey (opcional)\n4. Ejecutar la carpeta en orden: Health → Hardware CRUD → Driver CRUD → Bloatware CRUD → Recommendations → Errores.",
+    "description": "Colección oficial de pruebas del Back-End DriWin (Hito 2). Cubre health, CRUD completo de hardware-components, CRUD de driver-packages, CRUD de bloatware-rules, los endpoints de negocio recommendations/driver y recommendations/apps, y los casos de error del contrato (400/401/404/409/422).\n\nAntes de ejecutar:\n1. Levantar la API: cd server-api && npm run dev\n2. Ejecutar db/init.sql sobre driwin_catalog\n3. Configurar las variables de colección: baseUrl y apiKey (clave de administración; las lecturas son públicas)\n4. Ejecutar la carpeta en orden: Health → Hardware CRUD → Driver CRUD → Bloatware CRUD → Recommendations → Errores.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:3000/api/v1" },
     { "key": "apiKey", "value": "REEMPLAZAR_API_KEY_READ_WRITE" },
-    { "key": "readOnlyKey", "value": "" },
     { "key": "componentId", "value": "5" },
     { "key": "driverId", "value": "13" },
     { "key": "bloatwareId", "value": "4" }
@@ -682,20 +681,15 @@
           ]
         },
         {
-          "name": "POST hardware con clave de sólo lectura (403)",
+          "name": "GET catálogo con clave revocada (401)",
           "request": {
-            "method": "POST",
+            "method": "GET",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "X-API-Key", "value": "{{readOnlyKey}}" }
+              { "key": "Accept", "value": "application/json" },
+              { "key": "X-API-Key", "value": "clave_revocada_de_solo_lectura_123" }
             ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"ven_id\": \"1002\",\n  \"dev_id\": \"1638\",\n  \"commercial_name\": \"Lectura\",\n  \"category\": \"GPU\"\n}",
-              "options": { "raw": { "language": "json" } }
-            },
             "url": { "raw": "{{baseUrl}}/hardware-components", "host": ["{{baseUrl}}"], "path": ["hardware-components"] },
-            "description": "Requiere configurar readOnlyKey. Sin clave de sólo lectura, la API devuelve 401."
+            "description": "La antigua clave de sólo lectura estuvo embebida en el .exe y se revocó. El catálogo es público sin clave, pero una clave inválida (como la de un .exe antiguo) se rechaza con 401: nunca se ignora en silencio."
           },
           "event": [
             {
@@ -703,12 +697,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "if (!pm.collectionVariables.get('readOnlyKey')) {",
-                  "  console.warn('readOnlyKey vacío: se omite la aserción 403.');",
-                  "} else {",
-                  "  pm.test('403 Forbidden', () => pm.response.to.have.status(403));",
-                  "  pm.test('Código FORBIDDEN', () => pm.expect(pm.response.json().error.code).to.eql('FORBIDDEN'));",
-                  "}"
+                  "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "pm.test('Código UNAUTHORIZED', () => pm.expect(pm.response.json().error.code).to.eql('UNAUTHORIZED'));"
                 ]
               }
             }

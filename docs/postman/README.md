@@ -11,8 +11,7 @@
 | Variable | Valor |
 |---|---|
 | `baseUrl` | `http://localhost:3000/api/v1` |
-| `apiKey` | La misma `API_KEY` de `server-api/.env` (rol read-write) |
-| `readOnlyKey` | Opcional: `API_KEY_READ_ONLY` para demostrar el `403` |
+| `apiKey` | La misma `API_KEY` de `server-api/.env` (única clave: escrituras del catálogo) |
 | `componentId` | Se actualiza automáticamente al ejecutar el POST de hardware |
 | `driverId` | Se actualiza automáticamente al ejecutar el POST de driver |
 | `bloatwareId` | Se actualiza automáticamente al ejecutar el POST de bloatware |
@@ -27,7 +26,7 @@ publicada en Azure App Service sólo usa HTTPS (443) y funciona desde cualquier 
    [`DriWin_Azure.postman_environment.json`](./DriWin_Azure.postman_environment.json).
 2. Arriba a la derecha, elegir el entorno **DriWin · Azure (producción)**.
    Sus variables reemplazan a las de la colección.
-3. Completar `apiKey` (y opcionalmente `readOnlyKey`) **sólo en Postman**.
+3. Completar `apiKey` **sólo en Postman**.
    El archivo del repositorio las trae vacías a propósito: nunca se versionan.
 4. El plan gratuito (F1) se suspende sin uso: 2 minutos antes de presentar,
    ejecutar **01 · Health** hasta recibir `200` (la primera vez puede tardar ~60 s).
