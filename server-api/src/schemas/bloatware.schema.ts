@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { requerido } from './zodMessages.js';
 import { idParamSchema } from './common.schema.js';
 
 /**
@@ -8,30 +9,30 @@ import { idParamSchema } from './common.schema.js';
  */
 
 const riskLevelSchema = z.enum(['BAJO', 'MEDIO', 'ALTO'], {
-  errorMap: () => ({ message: 'risk_level debe ser BAJO, MEDIO o ALTO' }),
+  error: 'risk_level debe ser BAJO, MEDIO o ALTO',
 });
 
 const displayNameSchema = z
-  .string({ required_error: 'app_display_name es obligatorio' })
+  .string(requerido('app_display_name es obligatorio'))
   .trim()
   .min(2, 'app_display_name debe tener al menos 2 caracteres')
   .max(150, 'app_display_name no puede superar 150 caracteres');
 
 const signatureSchema = z
-  .string({ required_error: 'package_signature es obligatoria' })
+  .string(requerido('package_signature es obligatoria'))
   .trim()
   .min(2, 'package_signature debe tener al menos 2 caracteres')
   .max(150, 'package_signature no puede superar 150 caracteres');
 
 const powershellSchema = (field: string) =>
   z
-    .string({ required_error: `${field} es obligatorio` })
+    .string(requerido(`${field} es obligatorio`))
     .trim()
     .min(5, `${field} debe tener al menos 5 caracteres`)
     .max(4000, `${field} no puede superar 4000 caracteres`);
 
 const descriptionSchema = z
-  .string({ required_error: 'description es obligatoria' })
+  .string(requerido('description es obligatoria'))
   .trim()
   .min(10, 'description debe tener al menos 10 caracteres')
   .max(2000, 'description no puede superar 2000 caracteres');
