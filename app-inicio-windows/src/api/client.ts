@@ -11,6 +11,16 @@ import type { ApiErrorBody } from './types';
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000').replace(/\/$/, '');
 const API_PATH = '/api/v1';
 
+/**
+ * Tiempo máximo de espera por petición. Regla general ("Database Performance at
+ * Scale"): timeout del cliente ≈ 2 × el del servidor (statement_timeout = 5 s → 10 s).
+ * Pero el App Service F1 se suspende sin uso y su primera respuesta tarda ~40 s en
+ * despertar (medido): con 10 s la app fallaría cada vez que el servidor duerme.
+ * 60 s cubre ese arranque y evita que una conexión colgada deje la app esperando
+ * para siempre. Con un plan "Always On" debe volver a 10 s.
+ */
+export const REQUEST_TIMEOUT_MS = 60_000;
+
 /*
  * Sin claves: todo lo que se incluye en la app (Vite copia las VITE_* dentro
  * del JavaScript) lo puede leer cualquiera. Las consultas al catálogo son
@@ -81,15 +91,24 @@ async function request<T>(
     headers.Authorization = `Bearer ${token}`;
   }
 
+  // Se corta por lo que ocurra primero: la cancelación del llamador o el timeout.
+  const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
   let response: Response;
   try {
     response = await fetch(`${BASE_URL}${API_PATH}${path}`, {
       method,
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
-      signal,
+      signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
     });
   } catch (error) {
+    if (timeout.aborted) {
+      throw new ApiRequestError(
+        0,
+        'TIMEOUT',
+        'El servidor de DriWin tardó demasiado en responder. Si estuvo inactivo puede tardar hasta un minuto en despertar: inténtalo de nuevo.',
+      );
+    }
     if ((error as Error).name === 'AbortError') {
       throw error;
     }

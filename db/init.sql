@@ -58,8 +58,9 @@ CREATE TABLE hardware_components (
     CONSTRAINT uq_hardware_signature UNIQUE (ven_id, dev_id, subsys_id)
 );
 
--- Índice para acelerar la búsqueda del Paso 2 del Caso de Uso
-CREATE INDEX idx_hardware_lookup ON hardware_components (ven_id, dev_id);
+-- La búsqueda del Paso 2 del Caso de Uso (WHERE ven_id = … AND dev_id = …) usa el
+-- índice de uq_hardware_signature: sus dos primeras columnas son (ven_id, dev_id).
+-- El antiguo idx_hardware_lookup (ven_id, dev_id) era redundante (migración 011).
 
 -- 3. TABLA DE PAQUETES DE CONTROLADORES (Recurso Principal 2 para CRUD)
 CREATE TABLE driver_packages (
