@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 /**
  * Prueba de integración de las cuentas DriWin: la API completa (HTTP → Zod →
  * servicio → SQL real) contra PostgreSQL en memoria (PGlite) creado con
- * db/init.sql + migraciones 007 y 008, ejecutando todo COMO driwin_api, es
+ * db/init.sql + migraciones 007, 008 y 010, ejecutando todo COMO driwin_api, es
  * decir, con los mismos permisos mínimos que tiene la API en Azure.
  */
 const h = vi.hoisted(() => {
@@ -21,6 +21,9 @@ const h = vi.hoisted(() => {
       await db.exec(read('../../db/init.sql'));
       await db.exec(read('../../db/migrations/007_roles_minimo_privilegio.sql'));
       await db.exec(read('../../db/migrations/008_cuentas_y_suscripciones.sql'));
+      // Dos veces a propósito: la migración debe ser idempotente.
+      await db.exec(read('../../db/migrations/010_consentimiento_privacidad.sql'));
+      await db.exec(read('../../db/migrations/010_consentimiento_privacidad.sql'));
       await db.exec('SET ROLE driwin_api');
       return db;
     })();
@@ -50,12 +53,18 @@ vi.mock('../src/config/db.js', () => ({
 
 const { app } = await import('../src/app.js');
 
+const { PRIVACY_NOTICE_VERSION } = await import('../src/domain/privacy.js');
+
 const PASSWORD = 'clave-segura-123';
 const api = () => request(app);
 const bearer = (token: string) => ({ Authorization: `Bearer ${token}` });
+/** Consentimiento que envía la app cuando la casilla del aviso está marcada. */
+const CONSENT = { privacy_accepted: true, privacy_version: PRIVACY_NOTICE_VERSION };
 
 async function register(email: string, deviceId = randomUUID()) {
-  const res = await api().post('/api/v1/auth/register').send({ email, password: PASSWORD, device_id: deviceId });
+  const res = await api()
+    .post('/api/v1/auth/register')
+    .send({ email, password: PASSWORD, device_id: deviceId, ...CONSENT });
   expect(res.status).toBe(201);
   return { token: res.body.data.token as string, deviceId, body: res.body.data };
 }
@@ -103,7 +112,7 @@ describe('Cuentas DriWin (integración con SQL real y rol driwin_api)', () => {
     await register('duplicado@correo.cl');
     const res = await api()
       .post('/api/v1/auth/register')
-      .send({ email: ' DUPLICADO@correo.cl ', password: PASSWORD, device_id: randomUUID() });
+      .send({ email: ' DUPLICADO@correo.cl ', password: PASSWORD, device_id: randomUUID(), ...CONSENT });
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe('CONFLICT');
   });
@@ -111,7 +120,7 @@ describe('Cuentas DriWin (integración con SQL real y rol driwin_api)', () => {
   it('valida la contraseña mínima al registrarse', async () => {
     const res = await api()
       .post('/api/v1/auth/register')
-      .send({ email: 'corta@correo.cl', password: 'corta', device_id: randomUUID() });
+      .send({ email: 'corta@correo.cl', password: 'corta', device_id: randomUUID(), ...CONSENT });
     expect(res.status).toBe(400);
     expect(res.body.error.details[0].field).toBe('password');
   });
@@ -236,5 +245,96 @@ describe('Cuentas DriWin (integración con SQL real y rol driwin_api)', () => {
 
     const after = await db.query<{ n: number }>('SELECT count(*)::int AS n FROM subscriptions WHERE account_id IS NULL');
     expect(after.rows[0].n).toBe(before.rows[0].n + 1);
+  });
+});
+
+describe('Aviso de privacidad y derechos ARCO+ (Ley 19.628 / 21.719)', () => {
+  const base = (email: string) => ({ email, password: PASSWORD, device_id: randomUUID() });
+
+  it('no crea la cuenta sin aceptar el aviso (casilla sin marcar, valor "true" o versión antigua)', async () => {
+    const cases = [
+      { body: base('sin-aviso@correo.cl'), field: 'privacy_accepted' },
+      { body: { ...base('no-marcada@correo.cl'), ...CONSENT, privacy_accepted: false }, field: 'privacy_accepted' },
+      { body: { ...base('texto@correo.cl'), ...CONSENT, privacy_accepted: 'true' }, field: 'privacy_accepted' },
+      { body: { ...base('antigua@correo.cl'), ...CONSENT, privacy_version: '2020-01-01' }, field: 'privacy_version' },
+    ];
+    for (const { body, field } of cases) {
+      const res = await api().post('/api/v1/auth/register').send(body);
+      expect(res.status).toBe(400);
+      expect(res.body.error.details.map((d: { field: string }) => d.field)).toContain(field);
+    }
+    const db = await h.getDb();
+    const { rows } = await db.query<{ n: number }>(
+      "SELECT count(*)::int AS n FROM accounts WHERE privacy_version IS DISTINCT FROM $1",
+      [PRIVACY_NOTICE_VERSION],
+    );
+    expect(rows[0].n).toBe(0);
+  });
+
+  it('guarda qué versión del aviso se aceptó y cuándo (prueba del consentimiento)', async () => {
+    const { body } = await register('consentimiento@correo.cl');
+    expect(body.account.privacy).toMatchObject({
+      accepted_version: PRIVACY_NOTICE_VERSION,
+      current_version: PRIVACY_NOTICE_VERSION,
+      up_to_date: true,
+    });
+    expect(Date.now() - new Date(body.account.privacy.accepted_at).getTime()).toBeLessThan(60_000);
+  });
+
+  it('una cuenta anterior al aviso debe aceptarlo y queda registrada la aceptación', async () => {
+    const { token } = await register('cuenta-antigua@correo.cl');
+    const db = await h.getDb();
+    // Simula una cuenta creada antes de la migración 010.
+    await db.query(
+      "UPDATE accounts SET privacy_version = NULL, privacy_accepted_at = NULL WHERE account_id = (SELECT max(account_id) FROM accounts)",
+    );
+    const before = await api().get('/api/v1/account').set(bearer(token));
+    expect(before.body.data.privacy.up_to_date).toBe(false);
+
+    const old = await api().post('/api/v1/account/privacy').set(bearer(token)).send({ privacy_version: '2020-01-01' });
+    expect(old.status).toBe(400);
+
+    const ok = await api().post('/api/v1/account/privacy').set(bearer(token)).send({ privacy_version: PRIVACY_NOTICE_VERSION });
+    expect(ok.status).toBe(200);
+    expect(ok.body.data.privacy.up_to_date).toBe(true);
+  });
+
+  it('la base rechaza una aceptación a medias (versión sin fecha)', async () => {
+    const db = await h.getDb();
+    await expect(
+      db.query("UPDATE accounts SET privacy_accepted_at = NULL WHERE account_id = (SELECT max(account_id) FROM accounts)"),
+    ).rejects.toThrow(/ck_account_privacy/);
+  });
+
+  it('descargar mis datos: entrega todo descifrado, sin huellas técnicas y sin caché', async () => {
+    expect((await api().get('/api/v1/account/export')).status).toBe(401);
+
+    const { token } = await register('Exportar@Correo.cl');
+    await api().post('/api/v1/account/subscription').set(bearer(token)).send({ plan_years: 2 });
+    await api()
+      .post('/api/v1/support-tickets')
+      .set(bearer(token))
+      .send({ subject: 'Problema con audio', message: 'El driver Realtek no se instala en mi equipo.' });
+
+    const res = await api().get('/api/v1/account/export').set(bearer(token));
+    expect(res.status).toBe(200);
+    expect(res.headers['cache-control']).toBe('no-store');
+
+    const data = res.body.data;
+    expect(data.account).toMatchObject({ email: 'exportar@correo.cl', privacy_version: PRIVACY_NOTICE_VERSION });
+    expect(data.devices).toHaveLength(1);
+    expect(data.devices[0].current).toBe(true);
+    expect(data.sessions.length).toBeGreaterThanOrEqual(1);
+    expect(data.subscriptions[0]).toMatchObject({ plan: 'DriWin Premium 2 años', price_paid_clp: 57990 });
+    expect(data.support_tickets[0]).toMatchObject({
+      subject: 'Problema con audio',
+      message: 'El driver Realtek no se instala en mi equipo.',
+    });
+
+    // Nada de hashes, contraseñas ni datos cifrados en el archivo.
+    const text = JSON.stringify(data);
+    for (const forbidden of ['password', 'hash', 'encrypted', 'lookup', 'token']) {
+      expect(text.toLowerCase()).not.toContain(forbidden);
+    }
   });
 });

@@ -1,7 +1,13 @@
 import { env } from '../config/env.js';
 import { withTransaction } from '../config/db.js';
 import { ApiError, ErrorCode } from '../domain/errors.js';
-import { AccountRepository, type DeviceRow, type SubscriptionRow } from '../repositories/account.repository.js';
+import { PRIVACY_NOTICE_VERSION } from '../domain/privacy.js';
+import {
+  AccountRepository,
+  type AccountRow,
+  type DeviceRow,
+  type SubscriptionRow,
+} from '../repositories/account.repository.js';
 import {
   decryptText,
   deriveDataKeys,
@@ -62,7 +68,41 @@ export interface AccountStatusDto {
   this_device: { registered: boolean };
   devices: { device_id: number; registered_at: string; last_seen_at: string; current: boolean }[];
   max_devices: number;
+  /** Consentimiento del aviso de privacidad (Ley 19.628 / 21.719). */
+  privacy: {
+    /** Versión aceptada por la persona (null = cuenta anterior al aviso). */
+    accepted_version: string | null;
+    accepted_at: string | null;
+    current_version: string;
+    /** false → la app debe pedir aceptar el aviso vigente. */
+    up_to_date: boolean;
+  };
 }
+
+/** "Descargar mis datos" (derechos de acceso y portabilidad, Ley 21.719). */
+export interface AccountExportDto {
+  generated_at: string;
+  about: string;
+  account: {
+    email: string;
+    created_at: string;
+    privacy_version: string | null;
+    privacy_accepted_at: string | null;
+  };
+  devices: { registered_at: string; last_seen_at: string; current: boolean }[];
+  sessions: { created_at: string; expires_at: string; revoked_at: string | null }[];
+  subscriptions: {
+    plan: string;
+    starts_at: string;
+    ends_at: string;
+    price_paid_clp: number;
+    payment_reference: string;
+  }[];
+  support_tickets: { ticket_id: number; subject: string; message: string; status: string; created_at: string }[];
+}
+
+const iso = (value: Date | string) => new Date(value).toISOString();
+const isoOrNull = (value: Date | string | null) => (value ? iso(value) : null);
 
 const invalidCredentials = () =>
   new ApiError(401, ErrorCode.UNAUTHORIZED, 'Correo o contraseña incorrectos.', undefined, 'Revise los datos e inténtelo de nuevo.');
@@ -91,7 +131,7 @@ function subscriptionDto(row: SubscriptionRow | null, now: Date): AccountStatusD
 
 function statusDto(
   email: string,
-  createdAt: Date,
+  account: AccountRow,
   subscription: SubscriptionRow | null,
   devices: DeviceRow[],
   deviceHash: Buffer,
@@ -101,7 +141,7 @@ function statusDto(
   const registered = devices.some((device) => sameHash(device.device_hash, deviceHash));
   return {
     email,
-    created_at: new Date(createdAt).toISOString(),
+    created_at: new Date(account.created_at).toISOString(),
     premium_active: Boolean(sub?.active) && registered,
     subscription: sub,
     this_device: { registered },
@@ -112,12 +152,27 @@ function statusDto(
       current: sameHash(device.device_hash, deviceHash),
     })),
     max_devices: MAX_DEVICES,
+    privacy: {
+      accepted_version: account.privacy_version,
+      accepted_at: isoOrNull(account.privacy_accepted_at),
+      current_version: PRIVACY_NOTICE_VERSION,
+      up_to_date: account.privacy_version === PRIVACY_NOTICE_VERSION,
+    },
   };
 }
 
 export class AccountService {
-  /** Crea la cuenta, registra este equipo y abre sesión (todo o nada). */
-  static async register(email: string, password: string, deviceId: string): Promise<AccountSessionDto> {
+  /**
+   * Crea la cuenta, registra este equipo y abre sesión (todo o nada).
+   * `privacyVersion` ya viene validada por Zod: es la versión vigente del aviso
+   * y la casilla de consentimiento venía marcada.
+   */
+  static async register(
+    email: string,
+    password: string,
+    deviceId: string,
+    privacyVersion: string,
+  ): Promise<AccountSessionDto> {
     const keys = dataKeys();
     const normalized = normalizeEmail(email);
     const passwordHash = await hashPassword(password);
@@ -131,6 +186,7 @@ export class AccountService {
           emailLookup(normalized, keys),
           encryptText(normalized, keys),
           passwordHash,
+          privacyVersion,
         );
         await AccountRepository.insertDevice(client, newId, deviceHash);
         const expires = await AccountRepository.insertSession(client, newId, sha256(token), deviceHash, env.SESSION_TTL_DAYS);
@@ -204,11 +260,74 @@ export class AccountService {
         throw new ApiError(401, ErrorCode.UNAUTHORIZED, 'La cuenta ya no existe.', undefined, 'Inicie sesión de nuevo.');
       }
       await AccountRepository.touchDevice(client, accountId, deviceHash);
-      const [devices, subscription] = await Promise.all([
-        AccountRepository.listDevices(client, accountId),
-        AccountRepository.findLatestSubscription(client, accountId),
-      ]);
-      return statusDto(decryptText(account.email_encrypted, keys), account.created_at, subscription, devices, deviceHash);
+      // Una conexión ejecuta una consulta a la vez: dentro de una transacción van en
+      // secuencia (Promise.all sobre el mismo client está obsoleto y falla en pg@9).
+      const devices = await AccountRepository.listDevices(client, accountId);
+      const subscription = await AccountRepository.findLatestSubscription(client, accountId);
+      return statusDto(decryptText(account.email_encrypted, keys), account, subscription, devices, deviceHash);
+    });
+  }
+
+  /** Acepta el aviso de privacidad vigente (cuentas antiguas o aviso actualizado). */
+  static async acceptPrivacy(accountId: number, deviceHash: Buffer, privacyVersion: string): Promise<AccountStatusDto> {
+    await AccountRepository.acceptPrivacy(accountId, privacyVersion);
+    return AccountService.status(accountId, deviceHash);
+  }
+
+  /**
+   * "Descargar mis datos" (acceso y portabilidad, Ley 21.719): TODO lo que la
+   * base guarda de la persona, descifrado y en un formato legible (JSON).
+   * Las huellas técnicas (de equipos y sesiones) no se incluyen: no son datos
+   * de la persona sino números de control que no se pueden revertir.
+   */
+  static async exportData(accountId: number, deviceHash: Buffer): Promise<AccountExportDto> {
+    const keys = dataKeys();
+    return withTransaction(async (client) => {
+      const account = await AccountRepository.findById(client, accountId);
+      if (!account) {
+        throw new ApiError(401, ErrorCode.UNAUTHORIZED, 'La cuenta ya no existe.', undefined, 'Inicie sesión de nuevo.');
+      }
+      // En secuencia: es la misma conexión de la transacción (ver status()).
+      const devices = await AccountRepository.listDevices(client, accountId);
+      const sessions = await AccountRepository.listSessions(client, accountId);
+      const subscriptions = await AccountRepository.listSubscriptions(client, accountId);
+      const tickets = await AccountRepository.listTickets(client, accountId);
+      return {
+        generated_at: new Date().toISOString(),
+        about:
+          'Copia de todos los datos personales que DriWin guarda de tu cuenta (Ley 21.719: derechos de acceso y portabilidad). ' +
+          'Puedes borrarlos cuando quieras con "Borrar mis datos" en Mi cuenta.',
+        account: {
+          email: decryptText(account.email_encrypted, keys),
+          created_at: iso(account.created_at),
+          privacy_version: account.privacy_version,
+          privacy_accepted_at: isoOrNull(account.privacy_accepted_at),
+        },
+        devices: devices.map((device) => ({
+          registered_at: iso(device.registered_at),
+          last_seen_at: iso(device.last_seen_at),
+          current: sameHash(device.device_hash, deviceHash),
+        })),
+        sessions: sessions.map((row) => ({
+          created_at: iso(row.created_at),
+          expires_at: iso(row.expires_at),
+          revoked_at: isoOrNull(row.revoked_at),
+        })),
+        subscriptions: subscriptions.map((row) => ({
+          plan: row.tier_name,
+          starts_at: iso(row.starts_at),
+          ends_at: iso(row.ends_at),
+          price_paid_clp: Number(row.price_paid_clp),
+          payment_reference: row.payment_reference,
+        })),
+        support_tickets: tickets.map((row) => ({
+          ticket_id: row.ticket_id,
+          subject: row.subject,
+          message: decryptText(row.message_encrypted, keys),
+          status: row.status,
+          created_at: iso(row.created_at),
+        })),
+      };
     });
   }
 
