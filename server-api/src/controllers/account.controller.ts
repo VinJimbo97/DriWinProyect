@@ -3,6 +3,7 @@ import { getValidated } from '../middlewares/validate.js';
 import type {
   DeleteAccountBody,
   LoginBody,
+  PrivacyConsentBody,
   PurchaseBody,
   RegisterBody,
   SupportTicketBody,
@@ -24,8 +25,8 @@ function noStore(res: Response) {
 export class AccountController {
   static async register(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { email, password, device_id } = getValidated<RegisterBody>(req, 'body');
-      const result = await AccountService.register(email, password, device_id);
+      const { email, password, device_id, privacy_version } = getValidated<RegisterBody>(req, 'body');
+      const result = await AccountService.register(email, password, device_id, privacy_version);
       noStore(res);
       res.status(201).json({ data: result });
     } catch (error) {
@@ -94,6 +95,30 @@ export class AccountController {
       const status = await AccountService.purchase(accountId, plan_years, deviceHash);
       noStore(res);
       res.status(201).json({ data: status });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async acceptPrivacy(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { accountId, deviceHash } = session(req);
+      const { privacy_version } = getValidated<PrivacyConsentBody>(req, 'body');
+      const status = await AccountService.acceptPrivacy(accountId, deviceHash, privacy_version);
+      noStore(res);
+      res.status(200).json({ data: status });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /** "Descargar mis datos": contiene datos personales descifrados → nunca en caché. */
+  static async exportData(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { accountId, deviceHash } = session(req);
+      const data = await AccountService.exportData(accountId, deviceHash);
+      noStore(res);
+      res.status(200).json({ data });
     } catch (error) {
       next(error);
     }

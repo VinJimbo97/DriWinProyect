@@ -2,13 +2,13 @@ import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { useAccount } from '../account/accountContext';
 import { ApiRequestError } from '../api/client';
 import type { AccountStatus } from '../api/account';
+import { desktop } from '../desktop/bridge';
+import { SUPPORT_EMAIL } from '../privacy/notice';
 import { useSettings } from '../settings/settingsContext';
 import { HelpTip } from './HelpTip';
+import { PrivacyNotice } from './PrivacyNotice';
 
-/** Correo ficticio de soporte (dominio reservado .example: no llega a nadie por error). */
-export const SUPPORT_EMAIL = 'soporte@driwin.example';
-
-export type AccountView = 'auth' | 'summary' | 'support' | 'delete';
+export type AccountView = 'auth' | 'summary' | 'support' | 'delete' | 'privacy';
 
 interface Props {
   initialView?: AccountView;
@@ -78,8 +78,14 @@ export function AccountDialog({ initialView, onClose, onSignedIn, onSeePlans }: 
           />
         )}
         {signedIn && current === 'summary' && (
-          <AccountSummary onSupport={() => setView('support')} onDelete={() => setView('delete')} onSeePlans={onSeePlans} />
+          <AccountSummary
+            onSupport={() => setView('support')}
+            onDelete={() => setView('delete')}
+            onPrivacy={() => setView('privacy')}
+            onSeePlans={onSeePlans}
+          />
         )}
+        {signedIn && current === 'privacy' && <PrivacyConsentView onBack={() => setView('summary')} />}
         {signedIn && current === 'support' && <SupportForm onBack={() => setView('summary')} onSeePlans={onSeePlans} />}
         {signedIn && current === 'delete' && <DeleteAccountForm onBack={() => setView('summary')} onDeleted={onClose} />}
       </div>
@@ -127,10 +133,14 @@ function AuthForm({ onDone }: { onDone: () => void }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  // Consentimiento: la casilla parte SIN marcar (Ley 21.719: consentimiento explícito).
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const [readingNotice, setReadingNotice] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<{ message: string; fields: Record<string, string> } | null>(null);
 
   const passwordTooShort = mode === 'register' && password.length > 0 && password.length < 10;
+  const missingConsent = mode === 'register' && !privacyAccepted;
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -151,6 +161,30 @@ function AuthForm({ onDone }: { onDone: () => void }) {
     setMode(next);
     setError(null);
   };
+
+  // Leer el aviso sin perder lo escrito: el formulario sigue montado en memoria.
+  if (readingNotice) {
+    return (
+      <div>
+        <button type="button" className="link-button" onClick={() => setReadingNotice(false)}>← {t('account.back')}</button>
+        <div style={{ marginTop: 8 }}>
+          <PrivacyNotice headingId="account-dialog-title" />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <button
+            type="button"
+            className="btn-action btn-primary-fill"
+            onClick={() => {
+              setPrivacyAccepted(true);
+              setReadingNotice(false);
+            }}
+          >
+            {t('privacy.outdated.accept')}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={(event) => void submit(event)} noValidate>
@@ -218,7 +252,28 @@ function AuthForm({ onDone }: { onDone: () => void }) {
         </div>
       </Field>
 
-      {mode === 'register' && <p className="settings-note" style={{ marginTop: 0 }}>{t('account.register.privacy')}</p>}
+      {mode === 'register' && (
+        <div className="consent-check">
+          <input
+            id="account-privacy"
+            type="checkbox"
+            checked={privacyAccepted}
+            onChange={(event) => setPrivacyAccepted(event.target.checked)}
+            aria-describedby={error?.fields.privacy_accepted ? 'account-privacy-error' : undefined}
+          />
+          <div>
+            <label htmlFor="account-privacy">{t('privacy.consent')}</label>{' '}
+            <button type="button" className="link-button" onClick={() => setReadingNotice(true)}>
+              ({t('privacy.read')})
+            </button>
+            {(error?.fields.privacy_accepted ?? error?.fields.privacy_version) && (
+              <span className="form-field__error" id="account-privacy-error" role="alert" style={{ display: 'block' }}>
+                {error?.fields.privacy_accepted ?? error?.fields.privacy_version}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       {error && Object.keys(error.fields).length === 0 && (
         <p className="form-error" role="alert">{error.message}</p>
@@ -227,7 +282,8 @@ function AuthForm({ onDone }: { onDone: () => void }) {
       <button
         type="submit"
         className="btn-action btn-primary-fill"
-        disabled={busy || email.trim() === '' || password === '' || passwordTooShort}
+        disabled={busy || email.trim() === '' || password === '' || passwordTooShort || missingConsent}
+        title={missingConsent ? t('privacy.consent.required') : undefined}
       >
         {busy ? t('account.working') : mode === 'login' ? t('account.login.submit') : t('account.register.submit')}
       </button>
@@ -355,9 +411,111 @@ function DeviceList({ status }: { status: AccountStatus }) {
   );
 }
 
-function AccountSummary({ onSupport, onDelete, onSeePlans }: { onSupport: () => void; onDelete: () => void; onSeePlans: () => void }) {
+/** Descarga del JSON: en el .exe, diálogo "Guardar como"; en el navegador (dev), descarga normal. */
+async function saveExport(data: unknown): Promise<{ ok: true; path: string } | { ok: false; cancelled: boolean; message?: string }> {
+  const json = JSON.stringify(data, null, 2);
+  if (desktop) {
+    const result = await desktop.saveAccountExport(json);
+    return result.ok ? result : { ok: false, cancelled: result.code === 'CANCELLED', message: result.message };
+  }
+  const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'driwin-mis-datos.json';
+  link.click();
+  URL.revokeObjectURL(url);
+  return { ok: true, path: link.download };
+}
+
+function ExportDataButton() {
+  const { exportData } = useAccount();
+  const { t } = useSettings();
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
+
+  const run = async () => {
+    setBusy(true);
+    setMessage(null);
+    try {
+      const result = await saveExport(await exportData());
+      if (result.ok) {
+        setMessage({ text: t('account.export.saved', { path: result.path }), error: false });
+      } else {
+        setMessage({ text: result.cancelled ? t('account.export.cancelled') : (result.message ?? t('account.error.generic')), error: !result.cancelled });
+      }
+    } catch (caught) {
+      setMessage({ text: readError(caught, t('account.error.generic')).message, error: true });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <button type="button" className="btn-action" disabled={busy} title={t('account.export.hint')} onClick={() => void run()}>
+        {busy ? t('account.export.working') : t('account.export.open')}
+      </button>
+      {message && (
+        <p className={message.error ? 'form-error' : 'settings-note'} role={message.error ? 'alert' : 'status'} style={{ flexBasis: '100%', margin: 0 }}>
+          {message.text}
+        </p>
+      )}
+    </>
+  );
+}
+
+/** Aviso de privacidad dentro de "Mi cuenta": aceptar la versión vigente si falta. */
+function PrivacyConsentView({ onBack }: { onBack: () => void }) {
+  const { status, acceptPrivacy } = useAccount();
+  const { t } = useSettings();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const pending = status ? !status.privacy.up_to_date : false;
+
+  const accept = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await acceptPrivacy();
+      onBack();
+    } catch (caught) {
+      setError(readError(caught, t('account.error.generic')).message);
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div>
+      <button type="button" className="link-button" onClick={onBack}>← {t('account.back')}</button>
+      <div style={{ marginTop: 8 }}>
+        <PrivacyNotice headingId="account-dialog-title" />
+      </div>
+      {error && <p className="form-error" role="alert">{error}</p>}
+      {pending && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <button type="button" className="btn-action btn-primary-fill" disabled={busy} onClick={() => void accept()}>
+            {busy ? t('account.working') : t('privacy.outdated.accept')}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AccountSummary({
+  onSupport,
+  onDelete,
+  onPrivacy,
+  onSeePlans,
+}: {
+  onSupport: () => void;
+  onDelete: () => void;
+  onPrivacy: () => void;
+  onSeePlans: () => void;
+}) {
   const { status, signOut, premiumActive, sessionPersisted } = useAccount();
   const { t } = useSettings();
+  const formatDate = useDateFormat();
   const [busy, setBusy] = useState(false);
   if (!status) {
     return null;
@@ -368,6 +526,18 @@ function AccountSummary({ onSupport, onDelete, onSeePlans }: { onSupport: () => 
       <h2 id="account-dialog-title" style={{ margin: '0 0 2px 0' }}>{t('account.summary.title')}</h2>
       <p className="settings-hint" style={{ fontSize: '0.9rem' }}>{status.email}</p>
       {!sessionPersisted && <p className="settings-note">{t('account.sessionNotSaved')}</p>}
+
+      {!status.privacy.up_to_date && (
+        <div className="account-warning" role="status">
+          <div>
+            <strong>{t('privacy.outdated.title')}</strong>
+            <p style={{ margin: '2px 0 0 0' }}>{t('privacy.outdated.body')}</p>
+          </div>
+          <button type="button" className="btn-action btn-primary-fill" onClick={onPrivacy}>
+            {t('privacy.read')}
+          </button>
+        </div>
+      )}
 
       <PlanSummary status={status} onSeePlans={onSeePlans} />
       <DeviceList status={status} />
@@ -393,10 +563,20 @@ function AccountSummary({ onSupport, onDelete, onSeePlans }: { onSupport: () => 
         >
           {t('account.signOut')}
         </button>
+        <ExportDataButton />
         <button type="button" className="btn-action btn-danger-outline" onClick={onDelete}>
           {t('account.delete.open')}
         </button>
       </div>
+
+      <p className="settings-note" style={{ marginTop: 12 }}>
+        {status.privacy.accepted_version && status.privacy.accepted_at
+          ? t('privacy.acceptedOn', { version: status.privacy.accepted_version, date: formatDate(status.privacy.accepted_at) })
+          : ''}{' '}
+        <button type="button" className="link-button" onClick={onPrivacy}>
+          {t('privacy.open')}
+        </button>
+      </p>
     </div>
   );
 }

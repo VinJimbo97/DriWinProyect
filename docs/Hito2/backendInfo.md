@@ -176,7 +176,7 @@ Corresponde al caso de uso de `DescripcionDiagramaPrueba1.md` (Javier, Gamer, `V
 |---|---|---|---|
 | 1 | Presentación | `App.tsx` → `handleGrantUAC()` → `completeQuiz()` | — (persiste perfil en `localStorage`) |
 | 2 | Negocio Local | `src-tauri/src/commands/hardware.rs` → `#[tauri::command] fn detect_hardware() -> Result<HardwareSnapshot, CommandError>` → `powershell::run("Get-CimInstance Win32_VideoController \| Select-Object -ExpandProperty PNPDeviceID")` | Produce `ven_id: "1002"`, `dev_id: "1638"`, `os_environment: "Win11_x64"` |
-| 3 | Presentación | `src/services/api.ts` → `postDriverRecommendation(payload)` → `fetch(\`${import.meta.env.VITE_API_BASE_URL}/api/v1/recommendations/driver\`, { method:'POST', headers:{'Content-Type':'application/json','X-API-Key':...} })` | Body: `{"ven_id":"1002","dev_id":"1638","os_environment":"Win11_x64","profiles":["Gamer"]}` |
+| 3 | Presentación | `src/services/api.ts` → `postDriverRecommendation(payload)` → `fetch(\`${import.meta.env.VITE_API_BASE_URL}/api/v1/recommendations/driver\`, { method:'POST', headers:{'Content-Type':'application/json'} })` (público: la app no lleva claves) | Body: `{"ven_id":"1002","dev_id":"1638","os_environment":"Win11_x64","profiles":["Gamer"]}` |
 | 4 | Ruteo | `server-api/src/app.ts` → `helmet()`, `cors({origin: VITE_ALLOWED_ORIGINS})`, `morgan('dev')` → `server-api/src/routes/index.ts` → `recommendations.routes.ts` → `POST /driver` | — |
 | 5 | Ruteo | `server-api/src/controllers/recommendations.controller.ts` → `postDriverRecommendation(req,res,next)` → `middlewares/validate.ts(schemaDriverQuery)` (Zod) | 400 si `ven_id` no matchea `/^[0-9A-Fa-f]{4}$/` |
 | 6 | Servicio | `server-api/src/services/recommendation.service.ts` → `resolveDriver(dto)` | — |
@@ -386,7 +386,7 @@ Versiones publicadas verificadas con `npm view` el 21-10-2026:
 | **Listados** | Paginación obligatoria | Query: `?page=1&limit=20&sort=created_at&order=desc` → `meta.total`, `meta.totalPages` |
 | **Idempotencia** | Header `Idempotency-Key` opcional en `POST` | Evita duplicados si el cliente reintenta |
 | **CORS** | Orígenes allowlist | `https://driwin.vercel.app` (prototipo) + `http://localhost:5173` (dev) |
-| **Autenticación** | `X-API-Key` o `Authorization: Bearer <jwt>` | Requerida en **todos** los verbos de escritura (`POST/PUT/PATCH/DELETE`); los `GET` de recomendación también. `401` si falta/errónea |
+| **Autenticación** | `X-API-Key` o `Authorization: Bearer <jwt>` | Requerida sólo en los verbos de escritura del catálogo (`POST/PUT/PATCH/DELETE`), con la única clave de administración `API_KEY`. Lecturas y recomendaciones son **públicas** (la app no lleva claves). `401` si falta en una escritura o si llega una clave inválida en cualquier ruta |
 | **Cache** | `Cache-Control: public, max-age=60` en catálogos | Catálogos (hardware, apps) cambian poco: reduce carga del Flexible Server |
 | **Idioma/fechas** | ISO-8601 UTC | `"2026-09-15T00:00:00.000Z"` para `release_date`/`created_at` |
 
@@ -395,7 +395,7 @@ Versiones publicadas verificadas con `npm view` el 21-10-2026:
 ```http
 Content-Type: application/json
 Accept: application/json
-X-API-Key: <DRIWIN_API_KEY>              # o Authorization: Bearer <token>
+X-API-Key: <DRIWIN_API_KEY>              # sólo en escrituras de administración (o Authorization: Bearer)
 X-Request-Id: req_01J8Z...               # trazabilidad (opcional; el server lo genera si falta)
 Idempotency-Key: 3f0c...                 # sólo en POST
 ```
@@ -437,7 +437,6 @@ Idempotency-Key: 3f0c...                 # sólo en POST
 | `204 No Content` | — | `DELETE` exitoso (sin cuerpo) |
 | `400 Bad Request` | `VALIDATION_ERROR` | JSON malformado o schema Zod fallido (ej. `ven_id = "AMD"`) |
 | `401 Unauthorized` | `UNAUTHORIZED` | Falta o es inválida la cabecera `X-API-Key`/`Bearer` |
-| `403 Forbidden` | `FORBIDDEN` | API key válida sin permiso de escritura (role `read-only`) |
 | `404 Not Found` | `NOT_FOUND` | `component_id = 999` inexistente o ruta desconocida |
 | `409 Conflict` | `CONFLICT` | Violación de `UNIQUE` (firma `ven_id+dev_id+subsys_id`, `uq_driver_recommendation`, `uq_bloatware_signature`, `app_name`, `email`) |
 | `422 Unprocessable Entity` | `FK_VIOLATION` / `BUSINESS_RULE_VIOLATION` | FK inexistente (23503) o regla de negocio (ej. `active_devices_count > max_devices`) |
@@ -568,7 +567,7 @@ Response `200` con el registro completo actualizado.
 | Código | Condición | Ejemplo de `error` |
 |---|---|---|
 | `400` | `ven_id` con formato inválido (`CHECK`/schema Zod) | `{"code":"VALIDATION_ERROR","details":[{"field":"ven_id","issue":"Debe ser hexadecimal de 4 dígitos"}]}` |
-| `401` | Sin `X-API-Key` | `{"code":"UNAUTHORIZED","message":"Credencial ausente o inválida"}` |
+| `401` | Escritura sin `X-API-Key`, o clave inválida | `{"code":"UNAUTHORIZED","message":"Credencial ausente o inválida"}` |
 | `404` | `GET /hardware-components/999` | `{"code":"NOT_FOUND","message":"hardware_components con component_id=999 no existe"}` |
 | `409` | Duplicado de la firma `uq_hardware_signature (ven_id, dev_id, subsys_id)` (SQLSTATE `23505`) | `{"code":"CONFLICT","message":"Ya existe un componente con firma 1002/1638/GENERIC"}` |
 | `409` | `DELETE` sin `?cascade=true` con hijos | `{"code":"CONFLICT","message":"12 driver_packages asociados"}` |
@@ -679,7 +678,6 @@ LIMIT $5 OFFSET $6;
 | `404` | `driver_id` inexistente | `SELECT ... WHERE driver_id=$1` → 0 filas |
 | `409` | Duplicar `(component_id, profile_id, os_environment)` → `uq_driver_recommendation` | SQLSTATE `23505` |
 | `422` | `component_id` o `profile_id` inexistente → `fk_driver_component` / `fk_driver_profile` | SQLSTATE `23503`; **nota:** `fk_driver_profile` es `ON DELETE RESTRICT` |
-| `403` | API key de sólo lectura intentando `POST` | `authenticate.ts` |
 
 ---
 
@@ -1392,11 +1390,11 @@ VITE_API_BASE_PATH=/api/v1
 |---|---|---|---|
 | 1 | Vazamiento de credenciales a Git | `.gitignore` raíz + anidado; 0 secretos en historia | Activar *GitHub secret scanning* + *push protection*; `git-secrets` en pre-commit |
 | 2 | Inyección SQL | — | **Sólo** SQL parametrizado `$1..$n` en `repositories/`; prohibido concatenar; revisión de código en PR |
-| 3 | API abierto a Internet | — | `X-API-Key`/`Bearer` (`401`), `helmet`, CORS allowlist, `express-rate-limit` (60 req/min) |
+| 3 | API abierto a Internet | — | `X-API-Key` sólo para escrituras (`401`; la antigua clave de sólo lectura, embebida en el .exe, fue revocada), `helmet`, CORS allowlist, `express-rate-limit` (60 req/min) |
 | 4 | Intercepts de la conexión a BD | — | `sslmode=require` + firewall de Flexible Server + usuario dedicado con privilegios mínimos (sólo `SELECT/INSERT/UPDATE/DELETE` en `public`) |
 | 5 | Lectura indebida de hardware sin consentimiento | Modal UAC en `App.tsx` (simulado) | Tauri **capabilities**: sólo el comando `detect_hardware` requiere elevación; declaración en `THIRD_PARTY_LICENSES.md` §3.3 (sin RUT, correo ni historial) |
 | 6 | Instalación de binario manipulado | URLs fijas en `init.sql` | Verificación de hash SHA-256 en `install_driver()` antes de ejecutar; migración a **enlaces oficiales** (hallazgo H-05 legal) |
-| 7 | Escalar privilegios vía `removal_powershell_cmd` | — | Whitelist: el cliente **nunca** ejecuta comandos arbitrarios del cliente HTTP, sólo los de `bloatware_rules` descargados con `X-API-Key` y validados contra `ck_bloatware_risk` |
+| 7 | Escalar privilegios vía `removal_powershell_cmd` | — | Whitelist: el cliente **nunca** ejecuta comandos arbitrarios del cliente HTTP, sólo los de `bloatware_rules` descargados de la API (HTTPS) y validados contra una lista permitida local (`electron/bloatwarePolicy.ts`) y `ck_bloatware_risk` |
 | 8 | Datos personales | Minimización (sin PII); `synthetic_users` es semilla de prueba | Evaluar **Ley N° 21.719** (vigente 01-12-2026) antes del alta real de usuarios (`THIRD_PARTY_LICENSES.md` §8) |
 | 9 | Errores que filtren infraestructura | — | `errorHandler.ts` responde `INTERNAL_ERROR` genérico; stack sólo en logs con nivel `debug` |
 | 10 | Dependencias vulnerables | Auditoría de 70 paquetes (0 copyleft fuerte) | `npm audit --production` + `npm outdated` en CI antes de cada entrega |

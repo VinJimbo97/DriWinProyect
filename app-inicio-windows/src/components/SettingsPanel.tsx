@@ -5,6 +5,7 @@ import type { MessageKey } from '../i18n/translate';
 import { SCAN_SOURCES } from '../scanner';
 import { useSettings } from '../settings/settingsContext';
 import { LANGUAGES, THEME_PREFERENCES, type PremiumFeature } from '../settings/settings';
+import { PrivacyNoticeDialog } from './PrivacyNotice';
 
 type Section = 'general' | 'profile' | 'premium' | 'advanced';
 
@@ -40,6 +41,7 @@ export function SettingsPanel({ profileTitle, onRetakeQuiz, fixtureId, onChangeF
       )
     : null;
   const [section, setSection] = useState<Section>('general');
+  const [showPrivacy, setShowPrivacy] = useState(false);
 
   return (
     <div className="settings-layout">
@@ -100,8 +102,18 @@ export function SettingsPanel({ profileTitle, onRetakeQuiz, fixtureId, onChangeF
                 ))}
               </div>
             </div>
+
+            {/* Ley 19.628 / 21.719: el aviso se puede leer siempre, también sin cuenta. */}
+            <div className="settings-card">
+              <h3>{t('privacy.open')}</h3>
+              <p className="settings-hint">{t('privacy.settings.body')}</p>
+              <button type="button" className="btn-action" onClick={() => setShowPrivacy(true)}>
+                {t('privacy.read')}
+              </button>
+            </div>
           </>
         )}
+        {showPrivacy && <PrivacyNoticeDialog onClose={() => setShowPrivacy(false)} />}
 
         {section === 'profile' && (
           <>

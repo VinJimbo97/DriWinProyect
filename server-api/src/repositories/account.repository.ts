@@ -19,6 +19,8 @@ export interface AccountRow {
   failed_logins: number;
   locked_until: Date | null;
   created_at: Date;
+  privacy_version: string | null;
+  privacy_accepted_at: Date | null;
 }
 
 export interface SessionRow {
@@ -52,7 +54,23 @@ export interface TierRow {
   max_devices: number;
 }
 
-const ACCOUNT_COLUMNS = 'account_id, email_encrypted, password_hash, failed_logins, locked_until, created_at';
+const ACCOUNT_COLUMNS =
+  'account_id, email_encrypted, password_hash, failed_logins, locked_until, created_at, privacy_version, privacy_accepted_at';
+
+/** Filas para "Descargar mis datos" (acceso y portabilidad, Ley 21.719). */
+export interface SessionExportRow {
+  created_at: Date;
+  expires_at: Date;
+  revoked_at: Date | null;
+}
+
+export interface TicketExportRow {
+  ticket_id: number;
+  subject: string;
+  message_encrypted: Uint8Array;
+  status: string;
+  created_at: Date;
+}
 
 export class AccountRepository {
   static async insertAccount(
@@ -60,12 +78,14 @@ export class AccountRepository {
     emailLookup: Buffer,
     emailEncrypted: Buffer,
     passwordHash: string,
+    privacyVersion: string,
   ): Promise<number> {
+    // La aceptación del aviso se guarda en la MISMA fila: no existe cuenta sin consentimiento.
     const { rows } = await client.query(
-      `INSERT INTO accounts (email_lookup, email_encrypted, password_hash)
-       VALUES ($1, $2, $3)
+      `INSERT INTO accounts (email_lookup, email_encrypted, password_hash, privacy_version, privacy_accepted_at)
+       VALUES ($1, $2, $3, $4, now())
        RETURNING account_id`,
-      [emailLookup, emailEncrypted, passwordHash],
+      [emailLookup, emailEncrypted, passwordHash, privacyVersion],
     );
     return rows[0].account_id as number;
   }
@@ -110,6 +130,14 @@ export class AccountRepository {
     );
   }
 
+  /** Registra la aceptación del aviso de privacidad vigente. */
+  static async acceptPrivacy(accountId: number, privacyVersion: string): Promise<void> {
+    await pool.query(
+      'UPDATE accounts SET privacy_version = $2, privacy_accepted_at = now() WHERE account_id = $1',
+      [accountId, privacyVersion],
+    );
+  }
+
   static async deleteAccount(accountId: number): Promise<boolean> {
     const { rowCount } = await pool.query('DELETE FROM accounts WHERE account_id = $1', [accountId]);
     return (rowCount ?? 0) > 0;
@@ -148,6 +176,17 @@ export class AccountRepository {
     await pool.query('UPDATE account_sessions SET revoked_at = now() WHERE session_id = $1 AND revoked_at IS NULL', [
       sessionId,
     ]);
+  }
+
+  static async listSessions(client: Queryable, accountId: number): Promise<SessionExportRow[]> {
+    const { rows } = await client.query(
+      `SELECT created_at, expires_at, revoked_at
+       FROM account_sessions
+       WHERE account_id = $1
+       ORDER BY created_at, session_id`,
+      [accountId],
+    );
+    return rows as SessionExportRow[];
   }
 
   /** Cierra la sesión en un equipo quitado de la cuenta. */
@@ -223,6 +262,20 @@ export class AccountRepository {
     return (rows[0] as SubscriptionRow | undefined) ?? null;
   }
 
+  /** Todas las compras de la cuenta (para el export de datos). */
+  static async listSubscriptions(client: Queryable, accountId: number): Promise<SubscriptionRow[]> {
+    const { rows } = await client.query(
+      `SELECT s.subscription_id, t.tier_name, t.duration_months, s.starts_at, s.ends_at,
+              s.price_paid_clp, s.payment_reference
+       FROM subscriptions s
+       INNER JOIN subscription_tiers t ON t.tier_id = s.tier_id
+       WHERE s.account_id = $1
+       ORDER BY s.starts_at, s.subscription_id`,
+      [accountId],
+    );
+    return rows as SubscriptionRow[];
+  }
+
   static async insertSubscription(
     client: Queryable,
     input: {
@@ -255,5 +308,16 @@ export class AccountRepository {
       [accountId, subject, messageEncrypted],
     );
     return rows[0] as { ticket_id: number; created_at: Date };
+  }
+
+  static async listTickets(client: Queryable, accountId: number): Promise<TicketExportRow[]> {
+    const { rows } = await client.query(
+      `SELECT ticket_id, subject, message_encrypted, status, created_at
+       FROM support_tickets
+       WHERE account_id = $1
+       ORDER BY created_at, ticket_id`,
+      [accountId],
+    );
+    return rows as TicketExportRow[];
   }
 }

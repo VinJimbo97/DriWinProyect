@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { requerido } from './zodMessages.js';
+import { PRIVACY_NOTICE_VERSION } from '../domain/privacy.js';
 
 /**
  * Validación de las rutas de cuentas ("nunca confiar en el cliente").
@@ -22,7 +23,24 @@ const deviceId = z
   .string(requerido('Falta el identificador del equipo'))
   .uuid('El identificador del equipo no es válido');
 
-export const registerSchema = z.object({ email, password, device_id: deviceId });
+/**
+ * Consentimiento explícito del aviso de privacidad (Ley 19.628 / 21.719):
+ * la casilla debe venir marcada (true, no "true" ni 1) y con la versión vigente.
+ */
+const privacyVersion = z.literal(PRIVACY_NOTICE_VERSION, {
+  error: 'El aviso de privacidad cambió. Actualiza DriWin y vuelve a leerlo.',
+});
+
+export const registerSchema = z.object({
+  email,
+  password,
+  device_id: deviceId,
+  privacy_accepted: z.literal(true, { error: 'Debes aceptar el aviso de privacidad para crear la cuenta.' }),
+  privacy_version: privacyVersion,
+});
+
+/** Aceptar el aviso vigente (cuentas antiguas o cuando el aviso cambia de versión). */
+export const privacyConsentSchema = z.object({ privacy_version: privacyVersion });
 
 export const loginSchema = z.object({
   email,
@@ -63,3 +81,4 @@ export type LoginBody = z.infer<typeof loginSchema>;
 export type PurchaseBody = z.infer<typeof purchaseSchema>;
 export type DeleteAccountBody = z.infer<typeof deleteAccountSchema>;
 export type SupportTicketBody = z.infer<typeof supportTicketSchema>;
+export type PrivacyConsentBody = z.infer<typeof privacyConsentSchema>;

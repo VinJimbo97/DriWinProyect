@@ -219,8 +219,12 @@ CREATE TABLE accounts (
     failed_logins   INT NOT NULL DEFAULT 0,
     locked_until    TIMESTAMPTZ,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    -- Consentimiento del aviso de privacidad (migración 010): versión aceptada y cuándo.
+    privacy_version     VARCHAR(20),
+    privacy_accepted_at TIMESTAMPTZ,
     CONSTRAINT ck_account_lookup_len CHECK (octet_length(email_lookup) = 32),
-    CONSTRAINT ck_account_failed CHECK (failed_logins >= 0)
+    CONSTRAINT ck_account_failed CHECK (failed_logins >= 0),
+    CONSTRAINT ck_account_privacy CHECK ((privacy_version IS NULL) = (privacy_accepted_at IS NULL))
 );
 
 -- Equipos de la cuenta (máximo 3; lo controla la API dentro de una transacción).

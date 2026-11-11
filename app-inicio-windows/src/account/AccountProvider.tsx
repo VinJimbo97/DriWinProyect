@@ -149,6 +149,8 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         await withSession((token) => accountApi.deleteAccount(token, password));
         await forget();
       },
+      acceptPrivacy: () => update(accountApi.acceptPrivacy),
+      exportData: () => withSession(accountApi.exportAccountData),
       sendSupportTicket: (subject, message) =>
         withSession((token) => accountApi.createSupportTicket(token, subject, message)),
     }),

@@ -64,7 +64,9 @@ npm run build
 ## Seguridad implementada
 
 - **API Key** por `X-API-Key` o `Authorization: Bearer`; comparación en tiempo constante.
-  Clave opcional de sólo lectura (`API_KEY_READ_ONLY`) → `403` en escrituras.
+  Una sola clave (`API_KEY`), sólo para escrituras del catálogo; las lecturas son públicas.
+  Una clave inválida se rechaza con `401` en cualquier ruta. La antigua `API_KEY_READ_ONLY`
+  se eliminó: estuvo embebida en el .exe (credencial expuesta → revocada).
 - **Zod** valida y sanitiza `body`, `params` y `query` de todas las rutas (cero confianza en el cliente).
 - **SQL 100 % parametrizado** (`$1..$n`), sin concatenación de datos del cliente y sin `SELECT *`.
 - **TLS obligatorio** hacia Azure PostgreSQL (`sslmode=require` + `ssl` en `pg.Pool`).

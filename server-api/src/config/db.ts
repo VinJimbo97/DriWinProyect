@@ -36,11 +36,9 @@ export const pool = new Pool({
     : undefined,
 });
 
-pool.on('connect', (client) => {
-  client.query(`SET statement_timeout = ${env.DB_STATEMENT_TIMEOUT_MS}`).catch(() => {
-    /* el timeout global ya está configurado en el pool */
-  });
-});
+// statement_timeout ya viaja como parámetro de cada conexión (opción del Pool, arriba).
+// Antes se repetía con un `SET` sin esperar en pool.on('connect'), que chocaba con la
+// primera consulta de la conexión (uso concurrente del client: obsoleto, falla en pg@9).
 
 pool.on('error', (error) => {
   // Sólo se registra el código/mensaje técnico; nunca la cadena de conexión.

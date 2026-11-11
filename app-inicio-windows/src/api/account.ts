@@ -1,3 +1,4 @@
+import { PRIVACY_NOTICE_VERSION } from '../privacy/notice';
 import { apiPost, apiWithSession } from './client';
 
 /**
@@ -32,6 +33,14 @@ export interface AccountStatus {
   this_device: { registered: boolean };
   devices: AccountDevice[];
   max_devices: number;
+  /** Consentimiento del aviso de privacidad. */
+  privacy: {
+    accepted_version: string | null;
+    accepted_at: string | null;
+    current_version: string;
+    /** false → hay que pedir aceptar el aviso vigente. */
+    up_to_date: boolean;
+  };
 }
 
 export interface AccountSession {
@@ -49,8 +58,32 @@ export interface SupportTicketResult {
 
 type Data<T> = { data: T };
 
+/**
+ * Crear cuenta. Sólo se llama cuando la persona marcó la casilla del aviso de
+ * privacidad (lo exige AccountDialog); la API vuelve a verificarlo.
+ */
 export async function register(email: string, password: string, deviceId: string): Promise<AccountSession> {
-  return (await apiPost<Data<AccountSession>>('/auth/register', { email, password, device_id: deviceId })).data;
+  return (
+    await apiPost<Data<AccountSession>>('/auth/register', {
+      email,
+      password,
+      device_id: deviceId,
+      privacy_accepted: true,
+      privacy_version: PRIVACY_NOTICE_VERSION,
+    })
+  ).data;
+}
+
+/** Aceptar el aviso vigente (cuentas antiguas o aviso actualizado). */
+export async function acceptPrivacy(token: string): Promise<AccountStatus> {
+  return (
+    await apiWithSession<Data<AccountStatus>>('POST', '/account/privacy', token, { privacy_version: PRIVACY_NOTICE_VERSION })
+  ).data;
+}
+
+/** "Descargar mis datos": todo lo que la API guarda de la cuenta, descifrado. */
+export async function exportAccountData(token: string): Promise<unknown> {
+  return (await apiWithSession<Data<unknown>>('GET', '/account/export', token)).data;
 }
 
 export async function login(email: string, password: string, deviceId: string): Promise<AccountSession> {

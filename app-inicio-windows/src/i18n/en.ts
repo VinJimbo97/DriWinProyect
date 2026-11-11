@@ -196,8 +196,6 @@ export const en: Record<MessageKey, string> = {
   'account.register.tab': 'Create account',
   'account.register.title': 'Create your DriWin account',
   'account.register.submit': 'Create account',
-  'account.register.privacy':
-    'We only store your email (encrypted) and your protected password. You can delete your data anytime from "My account".',
   'account.email': 'Email',
   'account.password': 'Password',
   'account.password.help':
@@ -247,6 +245,59 @@ export const en: Record<MessageKey, string> = {
   'account.delete.local': 'Your preferences on this PC (language, theme and profile) are not touched.',
   'account.delete.password': 'Type your password to confirm',
   'account.delete.submit': 'Delete permanently',
+
+  // Download my data (access and portability, Chilean Law 21,719)
+  'account.export.open': 'Download my data',
+  'account.export.hint': 'Saves a copy of everything DriWin has about your account to a file.',
+  'account.export.working': 'Preparing your data...',
+  'account.export.saved': 'Your data was saved to: {path}',
+  'account.export.cancelled': 'The file was not saved.',
+
+  // Privacy notice (Chilean Laws 19,628 / 21,719)
+  'privacy.open': 'Privacy notice',
+  'privacy.title': 'DriWin privacy notice',
+  'privacy.version': 'Version {version}',
+  'privacy.intro':
+    'This explains what data DriWin uses, why, and what you can do about it, under Chilean personal data protection Laws 19,628 and 21,719.',
+  'privacy.who.title': 'Who is responsible for your data?',
+  'privacy.who.body':
+    'DriWin, an academic project developed in Chile. Privacy contact: {email} (demo address in this version).',
+  'privacy.noAccount.title': 'If you use DriWin without an account (free version)',
+  'privacy.noAccount.body':
+    '• Your hardware scan runs only on your PC.\n• To recommend drivers, the app sends our server the model codes of your devices (for example, VEN_8086 DEV_51F0), your Windows version and the profile you chose. They do not include your name, your PC name or serial numbers, and they are not stored.\n• Your preferences (language, theme and profile) stay on this computer only.\n• To prevent abuse, the server keeps your IP address in memory for a few minutes. It is not stored.',
+  'privacy.account.title': 'If you create an account (DriWin Premium)',
+  'privacy.account.body':
+    '• Your email, stored encrypted.\n• Your password, only as an irreversible fingerprint (never the password itself).\n• Your computers (up to 3), as a random code created by the app: no PC name or hardware data.\n• Your open sessions and their dates.\n• Your purchases: plan, dates, amount and reference. Payment is simulated in this version: we do not ask for card details.\n• Your support requests, with the message encrypted.\n• Which version of this notice you accepted and when.',
+  'privacy.purpose.title': 'What do we use it for?',
+  'privacy.purpose.body':
+    'Only to create and protect your account, activate Premium on your computers, answer your requests and keep a record of sales. We do not use it for advertising, we do not sell it or share it with other companies, and we make no automated decisions about you.',
+  'privacy.legalBasis.title': 'Why are we allowed to use it?',
+  'privacy.legalBasis.body':
+    'Because you accept it when you create the account (consent) and because it is needed to provide the Premium service you buy. You can withdraw your consent at any time by deleting your account.',
+  'privacy.where.title': 'Where is it stored?',
+  'privacy.where.body':
+    'On Microsoft Azure, which provides the infrastructure under our instructions (data processor). The servers are in Canada, so your data is transferred outside Chile. The connection is always encrypted (HTTPS).',
+  'privacy.retention.title': 'How long do we keep it?',
+  'privacy.retention.body':
+    'For as long as your account exists. Sessions expire after 30 days. If you delete your account, your email, password, computers, sessions and support requests are deleted immediately. Purchases remain only as an anonymous sales record, with no data about you.',
+  'privacy.security.title': 'How do we protect it?',
+  'privacy.security.body':
+    'Encrypted email and support requests (AES-256-GCM), passwords protected with scrypt, HTTPS connection, least-privilege database permissions and a temporary lock after 5 failed sign-in attempts. On your PC, the session is stored encrypted by Windows.',
+  'privacy.rights.title': 'Your rights',
+  'privacy.rights.body':
+    'You can access, correct and delete your data, object to its use, ask for it to be blocked and take it with you (portability). From "My account":\n• "Download my data" gives you a copy of everything in a file.\n• "Delete my data" deletes your account.\nFor anything else (for example, correcting your email), write to {email}. If you are not satisfied with the answer, you can file a complaint with the Chilean Personal Data Protection Agency.',
+  'privacy.changes.title': 'If this notice changes',
+  'privacy.changes.body':
+    'We will show it in the app and ask you to accept it again in "My account". The version above shows the date of the current notice.',
+  'privacy.consent': 'I have read and accept the privacy notice',
+  'privacy.consent.required': 'You must accept the privacy notice to create the account.',
+  'privacy.read': 'Read the notice',
+  'privacy.outdated.title': 'We updated the privacy notice',
+  'privacy.outdated.body': 'To keep using your account, read the current notice and accept it.',
+  'privacy.outdated.accept': 'I have read and accept',
+  'privacy.acceptedOn': 'You accepted the privacy notice (version {version}) on {date}.',
+  'privacy.settings.body':
+    'DriWin works without an account and without storing your data. Read here what is used, why, and what your rights are.',
 
   // Purchase (simulated payment)
   'premium.current.active': '👑 You have {plan}, valid until {date}.',
