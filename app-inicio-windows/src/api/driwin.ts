@@ -32,7 +32,7 @@ export async function getBloatwareRules(profiles: ProfileName[], signal?: AbortS
   };
 }
 
-/** GET /api/v1/recommendations/apps?profiles=Gamer,Creator (requiere clave). */
+/** GET /api/v1/recommendations/apps?profiles=Gamer,Creator (público). */
 export function getRecommendedApps(
   profiles: ProfileName[],
   signal?: AbortSignal,

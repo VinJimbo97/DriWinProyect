@@ -1,8 +1,11 @@
 # ============================================================================
 # Verificación de cada Pull Request hacia main.
 #
-#   server-api          ─▶ instalar ─▶ typecheck ─▶ pruebas ─▶ compilar
-#   app-inicio-windows  ─▶ instalar ─▶ lint ─▶ pruebas ─▶ compilar front
+#   server-api          ─▶ instalar ─▶ auditar dependencias ─▶ typecheck ─▶ pruebas ─▶ compilar
+#   app-inicio-windows  ─▶ instalar ─▶ auditar dependencias ─▶ lint ─▶ pruebas ─▶ compilar front
+#
+# Auditoría de dependencias (SCA, modelo STRIDE T-07): el PR falla si aparece una
+# vulnerabilidad ALTA o CRÍTICA en lo que llega al usuario. Ver docs/qa/stride/.
 #
 # No publica nada ni usa credenciales: el despliegue vive en deploy-backend.yml.
 # ============================================================================
@@ -34,6 +37,9 @@ jobs:
           cache: npm
           cache-dependency-path: server-api/package-lock.json
       - run: npm ci
+      # Sólo producción: es lo que se despliega en Azure (las de desarrollo no salen del CI).
+      - name: Auditar dependencias de producción
+        run: npm audit --omit=dev --audit-level=high
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
@@ -55,6 +61,9 @@ jobs:
           cache: npm
           cache-dependency-path: app-inicio-windows/package-lock.json
       - run: npm ci
+      # TODAS las dependencias: Electron está en devDependencies pero va DENTRO del .exe.
+      - name: Auditar dependencias (incluye Electron)
+        run: npm audit --audit-level=high
       - run: npm run lint
       - run: npm test
       - run: npm run build

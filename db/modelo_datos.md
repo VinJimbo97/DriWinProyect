@@ -120,7 +120,7 @@ erDiagram
 | `fk_driver_profile` | FK | `driver_packages.profile_id → user_profiles` (`ON DELETE RESTRICT`) | `23503` → `422 FK_VIOLATION` |
 | `fk_pa_profile` / `fk_pa_app` | FK | `profile_apps → user_profiles / recommended_apps` | `23503` → `422 FK_VIOLATION` |
 | `fk_user_tier` | FK | `synthetic_users.tier_id → subscription_tiers` (`ON DELETE RESTRICT`) | `23503` → `422 FK_VIOLATION` |
-| `idx_hardware_lookup` | Índice | `(ven_id, dev_id)` | Búsqueda del caso de uso |
+| `uq_hardware_signature` | Índice único | `(ven_id, dev_id, subsys_id)` | Búsqueda del caso de uso por su prefijo `(ven_id, dev_id)`. El antiguo `idx_hardware_lookup` era redundante y se quitó (migración 011, ver `docs/qa/explain/`) |
 | `idx_driver_profile` | Índice | `(profile_id)` | Unión de perfiles |
 | `idx_profile_apps_app` | Índice | `(app_id)` | "¿qué perfiles recomiendan esta app?" |
 | `idx_synthetic_users_profiles` | Índice GIN | `selected_profiles_array` | Filtro por perfil (`TEXT[]`) |

@@ -1,0 +1,31 @@
+# Dependabot: avisa y abre PRs cuando una dependencia tiene una actualización
+# (de seguridad o de versión). Cada PR pasa por el CI, que corre los tests y
+# la auditoría de dependencias antes de poder unirse.
+# Modelo de amenazas: docs/qa/stride/ (T-07, cadena de suministro).
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /server-api
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      # Parches y menores juntos en un solo PR para no llenar el repositorio.
+      menores:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /app-inicio-windows
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      menores:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
