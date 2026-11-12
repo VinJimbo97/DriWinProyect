@@ -6,6 +6,8 @@ export const en: Record<MessageKey, string> = {
   'common.retry': 'Retry',
   'common.cancel': 'Cancel',
   'common.loadingServer': 'Loading from the server...',
+  'common.loadingSlow':
+    'The server was idle and is waking up. The first load can take up to a minute; after that it is instant.',
   'common.errorCode': 'Code: {code}',
 
   // Top bar

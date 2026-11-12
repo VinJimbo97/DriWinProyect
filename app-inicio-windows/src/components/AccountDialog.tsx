@@ -12,6 +12,12 @@ export type AccountView = 'auth' | 'summary' | 'support' | 'delete' | 'privacy';
 
 interface Props {
   initialView?: AccountView;
+  /**
+   * Pestaña inicial del formulario. Quien llega desde "Elegir plan" sin sesión casi
+   * siempre es una persona nueva: abrir en "Crear cuenta" ahorra un clic (mapa de
+   * navegación, docs/qa/navegacion).
+   */
+  initialAuthMode?: 'login' | 'register';
   onClose: () => void;
   /** Se llama después de iniciar sesión o crear la cuenta. */
   onSignedIn?: () => void;
@@ -41,7 +47,7 @@ function useDateFormat() {
  * iniciar sesión / crear cuenta, resumen con plan y equipos, soporte técnico
  * y "Borrar mis datos".
  */
-export function AccountDialog({ initialView, onClose, onSignedIn, onSeePlans }: Props) {
+export function AccountDialog({ initialView, initialAuthMode = 'login', onClose, onSignedIn, onSeePlans }: Props) {
   const { phase } = useAccount();
   const { t } = useSettings();
   const [view, setView] = useState<AccountView>(initialView ?? (phase === 'signedIn' ? 'summary' : 'auth'));
@@ -71,6 +77,7 @@ export function AccountDialog({ initialView, onClose, onSignedIn, onSeePlans }: 
         {phase === 'loading' && <p>{t('account.loading')}</p>}
         {phase !== 'loading' && current === 'auth' && (
           <AuthForm
+            initialMode={initialAuthMode}
             onDone={() => {
               setView('summary');
               onSignedIn?.();
@@ -126,10 +133,10 @@ function Field({
   );
 }
 
-function AuthForm({ onDone }: { onDone: () => void }) {
+function AuthForm({ onDone, initialMode }: { onDone: () => void; initialMode: 'login' | 'register' }) {
   const { signIn } = useAccount();
   const { t } = useSettings();
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [mode, setMode] = useState<'login' | 'register'>(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);

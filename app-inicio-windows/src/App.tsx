@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ApiRequestError } from './api/client';
 import { useAccount } from './account/accountContext';
 import { AccountDialog, type AccountView } from './components/AccountDialog';
@@ -72,11 +72,34 @@ function profilesTitle(profiles: ProfileName[], t: Translate): string {
     .join(' & ');
 }
 
+/** Segundos de carga tras los cuales se explica que el servidor puede estar despertando. */
+const SLOW_LOADING_MS = 5_000;
+
+/**
+ * "Cargando..." que, si tarda, explica por qué: el servidor (App Service F1) se
+ * suspende sin uso y tardó ~54 s en despertar (medido). Sin esta nota la persona
+ * ve casi un minuto de espera sin explicación y cree que la app se colgó.
+ */
+function LoadingServer() {
+  const { t } = useSettings();
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSlow(true), SLOW_LOADING_MS);
+    return () => window.clearTimeout(timer);
+  }, []);
+  return (
+    <div role="status" aria-live="polite">
+      <p style={{ opacity: 0.7, marginBottom: 4 }}>{t('common.loadingServer')}</p>
+      {slow && <p className="settings-note" style={{ marginTop: 0 }}>{t('common.loadingSlow')}</p>}
+    </div>
+  );
+}
+
 /** Mensaje de carga / error con botón de reintento para los datos de la API. */
 function ApiStatus({ status, error, onRetry }: { status: string; error: ApiRequestError | null; onRetry: () => void }) {
   const { t } = useSettings();
   if (status === 'loading') {
-    return <p style={{ opacity: 0.7 }}>{t('common.loadingServer')}</p>;
+    return <LoadingServer />;
   }
   if (status === 'error' && error) {
     return (
@@ -579,6 +602,7 @@ export default function App() {
       {accountDialog && (
         <AccountDialog
           initialView={accountDialog === 'default' ? undefined : accountDialog}
+          initialAuthMode={pendingPlan ? 'register' : 'login'}
           onClose={() => {
             setAccountDialog(null);
             setPendingPlan(null);

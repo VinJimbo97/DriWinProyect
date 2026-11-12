@@ -9,6 +9,8 @@ export const es = {
   'common.retry': 'Reintentar',
   'common.cancel': 'Cancelar',
   'common.loadingServer': 'Cargando desde el servidor...',
+  'common.loadingSlow':
+    'El servidor estaba en reposo y está despertando. La primera carga puede tardar hasta un minuto; después es inmediata.',
   'common.errorCode': 'Código: {code}',
 
   // Barra superior
