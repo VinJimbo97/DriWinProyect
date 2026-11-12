@@ -95,9 +95,9 @@ Riesgo residual = probabilidad × impacto **después** de los controles. Estado:
 | ID | Amenaza | Control implementado | Evidencia | Residual | Estado |
 |---|---|---|---|:---:|:---:|
 | D-01 | Exceso de peticiones a la API | 60 peticiones/min por IP; cuerpo ≤ 100 KB; `statement_timeout` 5 s; pool de 10 conexiones | `rateLimit.ts`, `db.ts`; benchmark local: 732 req/s sin errores | Bajo | ✅ |
-| D-02 | Agotar la cuota de CPU del plan F1 (60 min/día) con muchas IPs | El límite por IP no frena un ataque distribuido | — | Medio | ⚠️ Aceptado por costo (proyecto académico). En producción real: plan B1 + Azure Front Door/WAF |
+| D-02 | Agotar la cuota de CPU del plan F1 (60 min/día) con muchas IPs | El límite por IP no frena un ataque distribuido | — | Medio | ⚠️ Aceptado por decisión de costo del equipo (proyecto académico). Un lanzamiento comercial requiere un plan sin cuota diaria y un WAF delante de la API |
 | D-03 | Bloquear la cuenta de otra persona a propósito (5 contraseñas malas) | El bloqueo es temporal (15 min) y no revela si la cuenta existe | `account.service.ts` | Bajo | ⚠️ Compromiso conocido entre fuerza bruta y bloqueo |
-| D-04 | La app se queda esperando para siempre a un servidor colgado | Timeout del cliente de 60 s con mensaje y botón Reintentar | `client.ts` (`REQUEST_TIMEOUT_MS`) | Bajo | ✅ |
+| D-04 | La app se queda esperando para siempre a un servidor colgado | Timeout del cliente de 90 s (cubre el arranque en frío medido de ~54 s) con mensaje y botón Reintentar | `client.ts` (`REQUEST_TIMEOUT_MS`) | Bajo | ✅ |
 
 ### E — Elevación de privilegios (Elevation of privilege)
 

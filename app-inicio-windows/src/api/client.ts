@@ -14,12 +14,13 @@ const API_PATH = '/api/v1';
 /**
  * Tiempo máximo de espera por petición. Regla general ("Database Performance at
  * Scale"): timeout del cliente ≈ 2 × el del servidor (statement_timeout = 5 s → 10 s).
- * Pero el App Service F1 se suspende sin uso y su primera respuesta tarda ~40 s en
- * despertar (medido): con 10 s la app fallaría cada vez que el servidor duerme.
- * 60 s cubre ese arranque y evita que una conexión colgada deje la app esperando
- * para siempre. Con un plan "Always On" debe volver a 10 s.
+ * Pero el App Service F1 se suspende sin uso y su primera respuesta tardó ~54 s en
+ * despertar (medido el 2026-11-11 tras ~20 min sin uso): con 10 s la app fallaría
+ * cada vez que el servidor duerme. 90 s cubre ese arranque con margen (varía de un
+ * día a otro) y evita que una conexión colgada deje la app esperando para siempre.
+ * Con un plan "Always On" debe volver a 10 s.
  */
-export const REQUEST_TIMEOUT_MS = 60_000;
+export const REQUEST_TIMEOUT_MS = 90_000;
 
 /*
  * Sin claves: todo lo que se incluye en la app (Vite copia las VITE_* dentro
