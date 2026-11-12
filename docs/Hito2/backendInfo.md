@@ -8,6 +8,8 @@
 **Rama `main`:** `999879e` — *"Propuesta de back end"* (4 commits detrás de la rama de trabajo)
 **Fecha de auditoría:** 21 de octubre de 2026
 **Licencia del producto:** MIT — `Copyright (c) 2026 Joaquín Castillo y Equipo DriWin`
+> **Nota de revisión (12-11-2026).** Este documento es la **auditoría de la etapa de diseño (21-10-2026)** y se conserva como registro de cómo se planificó el back end. En esta revisión se reemplazó la capa local que estaba diseñada en **Rust + Tauri** por la que realmente se construyó, **TypeScript + Electron**; la razón está en la [§2.4](#24-capa-de-negocio-local--typescript--electron-diseñada-en-rust--tauri). Los demás estados (🟡 diseñado, hallazgos H-01 a H-14) describen el 21-10-2026: la API, las pruebas, el CI y la conexión del front ya están implementados. El estado actual está en el documento técnico (`docs/Hito2/DriWin_Documento_Tecnico_Hito2_actualizado.docx`), el [README](../../README.md), el [modelo de datos](../../db/modelo_datos.md) y la [carpeta de QA](../qa/README.md).
+
 **Método de auditoría:** lectura directa de cada archivo del workspace (excluyendo `node_modules/`), historial completo de Git (`git log --all`, `git show`, `git log -S`), extracción de texto del PDF `docs/Propuesta_Tecnica.pdf`, barrido de secretos sobre el árbol **y** sobre toda la historia versionada, y verificación de versiones publicadas en el registro npm (`npm view`).
 
 ---
@@ -36,7 +38,7 @@ Todo lo que aparece en este documento está etiquetado con su estado real de imp
 | Símbolo | Significado | Uso en este documento |
 |---|---|---|
 | ✅ **IMPLEMENTADO** | Existe en el código del workspace y fue verificado línea por línea | Frontend React/TS, `db/init.sql`, documentación, `.gitignore`, licencias |
-| 🟡 **DISEÑADO** | Contrato/especificación completa, **cero código** en el repositorio hoy | API REST Express/TS, capa local Tauri/Rust, `.env.example` |
+| 🟡 **DISEÑADO** | Contrato/especificación completa, **cero código** en el repositorio hoy | API REST Express/TS, capa local de escritorio (Electron/TypeScript), `.env.example` |
 | ⚠️ **HALLAZGO** | Brecha, deuda técnica o inconsistencia detectada por la auditoría | Secciones 0 y A |
 
 ---
@@ -45,14 +47,14 @@ Todo lo que aparece en este documento está etiquetado con su estado real de imp
 
 DriWin es una aplicación de automatización y gestión para entornos Windows que sustituye el enfoque de "repositorio de controladores" por una **arquitectura basada en intenciones**: el usuario declara *para qué* usa el PC (Gamer, Creator, Developer, Office) y el sistema cruza esa intención con el hardware detectado (`VEN_ID`/`DEV_ID`) para entregar controladores, aplicaciones y reglas de limpieza de bloatware.
 
-**Estado real al 21-10-2026:** el repositorio contiene (a) un **prototipo de interfaz completo** en React + TypeScript + Vite, (b) un **esquema de base de datos completo y sembrado** en PostgreSQL (`db/init.sql`, 8 tablas), y (c) **toda la documentación de arquitectura** (diagramas Mermaid, caso de uso, estrategia de recolección, cumplimiento legal). **No contiene ningún código de back-end**: no existe servidor HTTP, no existe carpeta `src-tauri/`, no existe `Cargo.toml`, y el frontend **no realiza ni una sola petición de red** (`fetch`, `axios`, `invoke` → 0 ocurrencias).
+**Estado real al 21-10-2026:** el repositorio contiene (a) un **prototipo de interfaz completo** en React + TypeScript + Vite, (b) un **esquema de base de datos completo y sembrado** en PostgreSQL (`db/init.sql`, 8 tablas), y (c) **toda la documentación de arquitectura** (diagramas Mermaid, caso de uso, estrategia de recolección, cumplimiento legal). **No contiene ningún código de back-end**: no existe servidor HTTP, no existe la capa local de escritorio (hoy `app-inicio-windows/electron/`), y el frontend **no realiza ni una sola petición de red** (`fetch`, `axios`, `invoke` → 0 ocurrencias).
 
 ### Tabla de hallazgos
 
 | ID | Hallazgo | Severidad | Evidencia verificable | Estado |
 |---|---|---|---|---|
 | **H-01** | No existe implementación de la API REST (ni `routes`, ni `controllers`, ni `repositories`) | **Alta** | `git log --all --name-only` en 41 commits: jamás existió un archivo de servidor | 🟡 Diseñada en §3 de este documento |
-| **H-02** | No existe la Capa de Negocio Local en Rust/Tauri (`src-tauri/`, `Cargo.toml`) | **Alta** | Ausencia total de carpetas Rust en el árbol y en el historial | 🟡 Diseñada en §1.4 de este documento |
+| **H-02** | No existe la Capa de Negocio Local de escritorio (diseñada en Rust/Tauri) | **Alta** | Ausencia de una capa de escritorio en el árbol y en el historial | 🟡 Diseñada en §1.4; construida después en TypeScript/Electron (§2.4) |
 | **H-03** | El frontend no consume ningún servicio: todos los datos son *mock* en `App.tsx` | **Alta** | `app-inicio-windows/src/App.tsx` líneas 39-54 (`useState` con arrays literales) | ⚠️ Requiere capa de servicios antes de la defensa funcional |
 | **H-04** | No existe `.env` ni `.env.example` en ninguna parte del árbol | **Media** | `.gitignore` los declara y excluye, pero no hay archivo de ejemplo | 🟡 Estructura exacta en §6.3 |
 | **H-05** | `db/init.sql` **no crea ni selecciona** la base de datos `driwin_catalog` (el literal no aparece en ninguna parte del repo ni de su historia) | **Media** | `git grep 'driwin_catalog' $(git rev-list --all)` → 0 resultados | ⚠️ Paso manual obligatorio en §8.4 |
@@ -133,7 +135,7 @@ DriWinProyect/
 **Estructura que NO existe** (verificada en árbol *y* en `git log --all --name-only` sobre los 41 commits del repositorio):
 
 ```text
-✗ src-tauri/            ✗ Cargo.toml         ✗ server-api/       ✗ server/
+✗ electron/ (capa local) ✗ electron-builder ✗ server-api/       ✗ server/
 ✗ api/                  ✗ src/routes/        ✗ .env              ✗ .env.example
 ✗ Dockerfile            ✗ docker-compose.yml ✗ .github/workflows ✗ tests/ | *.test.ts
 ```
@@ -143,7 +145,7 @@ DriWinProyect/
 | # | Capa | Archivos/carpeta reales | Estado | Responsabilidad única |
 |---|---|---|---|---|
 | **1** | **Presentación / Cliente** (React, TypeScript, CSS) | `app-inicio-windows/src/main.tsx`, `src/App.tsx`, `src/styles/theme.css`, `index.html`, `public/*`, `src/assets/*`, `tsconfig*.json`, `vite.config.ts`, `.oxlintrc.json`, `package.json` | ✅ Implementado | Capturar decisiones del usuario (UAC, cuestionario de perfil, pestañas `driwin`/`apps`/`optimizar`/`configuracion`/`premium`) y renderizar la respuesta; **sin lógica de negocio ni acceso a datos** |
-| **2** | **Negocio Local** (Tauri/Rust, PowerShell/WMI/pnputil) | *(diseñada)* `src-tauri/src/commands/{hardware,drivers,bloatware}.rs`; *(especificada en)* `docs/DiagramaMD/DiagramaBackEnd/DescripcionDiagramaPrueba1.md` §1 y §5, `THIRD_PARTY_LICENSES.md` §3; *(simulada hoy en)* `App.tsx` `useEffect` de 2000 ms y `handleGrantUAC()` | 🟡 Diseñado (simulado en UI) | Elevar privilegios (UAC), detectar `VEN_ID`/`DEV_ID`/`subsys_id` vía `Get-CimInstance Win32_VideoController`/`Win32_PnPEntity` o registro `HKLM\SYSTEM\CurrentControlSet\Enum\PCI`, ejecutar `pnputil /add-driver` y desinstalar bloatware con `Get-AppxPackage \| Remove-AppxPackage` |
+| **2** | **Negocio Local** (Electron + TypeScript, PowerShell/WMI/pnputil) | *(diseñada; hoy implementada)* `app-inicio-windows/electron/{hardwareScanner,driverInstaller,bloatwareCleaner}.ts`; *(especificada en)* `docs/DiagramaMD/DiagramaBackEnd/DescripcionDiagramaPrueba1.md` §1 y §5, `THIRD_PARTY_LICENSES.md` §3; *(simulada hoy en)* `App.tsx` `useEffect` de 2000 ms y `handleGrantUAC()` | 🟡 Diseñado (simulado en UI) | Elevar privilegios (UAC), detectar `VEN_ID`/`DEV_ID`/`subsys_id` vía `Get-CimInstance Win32_VideoController`/`Win32_PnPEntity` o registro `HKLM\SYSTEM\CurrentControlSet\Enum\PCI`, ejecutar `pnputil /add-driver` y desinstalar bloatware con `Get-AppxPackage \| Remove-AppxPackage` |
 | **3** | **Ruteo / Controladores del Servidor** | *(diseñada)* `server-api/src/routes/*.routes.ts` + `server-api/src/controllers/*.controller.ts` | 🟡 Diseñado | Exponer los verbos HTTP de §3, validar payload con Zod, mapear DTO → código HTTP, **cero SQL** en esta capa |
 | **4** | **Servicio / Lógica de negocio del Servidor** | *(diseñada)* `server-api/src/services/{recommendation,driver,hardware,app,bloatware,blobUrl}.service.ts`; *(reglas ya especificadas en)* `db/init.sql` líneas 354-449 (9 consultas de prueba) y `DescripcionDiagramaPrueba1.md` §2 | 🟡 Diseñado | Cruzar perfiles Gamer/Creator/Developer/Office con hardware detectado, resolver `UNION` de apps, decidir WHQL vs Game Ready/Studio, y **entregar la URL de Azure Blob Storage** sin transferir binarios |
 | **5** | **Acceso a Datos / Persistencia** | ✅ `db/init.sql` (esquema + semilla + consultas); 🟡 *(diseñada)* `server-api/src/repositories/*.repository.ts` + `server-api/src/config/db.ts` (`pg.Pool` sobre Azure PostgreSQL Flexible Server) | Esquema ✅ / Repositorios 🟡 | Unicidad del acceso a `driwin_catalog` mediante SQL parametrizado; índices `idx_hardware_lookup`, `idx_driver_profile`, `idx_profile_apps_app`, `idx_synthetic_users_profiles` |
@@ -160,7 +162,7 @@ Este es el recorrido que hoy se puede ejecutar y demostrar:
 | 2 | `src/main.tsx` → `createRoot(document.getElementById('root')!).render(<StrictMode><App/></StrictMode>)` | Montaje de React 19 |
 | 3 | `src/App.tsx` → `useEffect(() => {...})` (líneas 57-64) | Lee `localStorage.getItem('driwin_profile')`; si existe → `setIsNewUser(false)` y `setActiveProfileTitle(...)` |
 | 4 | `App.tsx` → `handleGrantUAC()` (líneas 76-81) | `setHasAdminRights(true)` (simula la elevación UAC) y abre `showQuiz` |
-| 5 | `App.tsx` → `useEffect` con `setTimeout(..., 2000)` (líneas 67-74) | **Simulación** del escaneo paralelo de `VEN/DEV` → `setParallelScanDone(true)` (es el punto donde entraría el `invoke` de Tauri) |
+| 5 | `App.tsx` → `useEffect` con `setTimeout(..., 2000)` (líneas 67-74) | **Simulación** del escaneo paralelo de `VEN/DEV` → `setParallelScanDone(true)` (es el punto donde hoy entra la llamada IPC `hardware:scan` de Electron) |
 | 6 | `App.tsx` → `handleProfileToggle()` y `completeQuiz()` (líneas 83-96) | Acumula `selectedProfiles: string[]`, construye `mainProfile = selectedProfiles.join(' & ')` y persiste en `localStorage` |
 | 7 | `App.tsx` → render condicional `activeTab === 'driwin' \| 'apps' \| 'optimizar' \| 'configuracion' \| 'premium'` | Pintado del dashboard; `drivers.map(...)` sobre el array literal de la línea 39 |
 | 8 | `App.tsx` → `installDriver(deviceName)` (líneas 98-100) | `setDrivers(prev => prev.map(...))` → cambia `installed: true`. **No hay descarga ni instalación reales** |
@@ -175,7 +177,7 @@ Corresponde al caso de uso de `DescripcionDiagramaPrueba1.md` (Javier, Gamer, `V
 | Paso | Capa | Archivo → función/símbolo | SQL / dato que se invoca |
 |---|---|---|---|
 | 1 | Presentación | `App.tsx` → `handleGrantUAC()` → `completeQuiz()` | — (persiste perfil en `localStorage`) |
-| 2 | Negocio Local | `src-tauri/src/commands/hardware.rs` → `#[tauri::command] fn detect_hardware() -> Result<HardwareSnapshot, CommandError>` → `powershell::run("Get-CimInstance Win32_VideoController \| Select-Object -ExpandProperty PNPDeviceID")` | Produce `ven_id: "1002"`, `dev_id: "1638"`, `os_environment: "Win11_x64"` |
+| 2 | Negocio Local | `electron/hardwareScanner.ts` → `scanHardware()` en el proceso main (canal IPC `hardware:scan`) → `execFile("powershell.exe", [..., "Get-CimInstance Win32_PnPSignedDriver ..."])` | Produce `ven_id: "1002"`, `dev_id: "1638"`, `os_environment: "Win11_x64"` |
 | 3 | Presentación | `src/services/api.ts` → `postDriverRecommendation(payload)` → `fetch(\`${import.meta.env.VITE_API_BASE_URL}/api/v1/recommendations/driver\`, { method:'POST', headers:{'Content-Type':'application/json'} })` (público: la app no lleva claves) | Body: `{"ven_id":"1002","dev_id":"1638","os_environment":"Win11_x64","profiles":["Gamer"]}` |
 | 4 | Ruteo | `server-api/src/app.ts` → `helmet()`, `cors({origin: VITE_ALLOWED_ORIGINS})`, `morgan('dev')` → `server-api/src/routes/index.ts` → `recommendations.routes.ts` → `POST /driver` | — |
 | 5 | Ruteo | `server-api/src/controllers/recommendations.controller.ts` → `postDriverRecommendation(req,res,next)` → `middlewares/validate.ts(schemaDriverQuery)` (Zod) | 400 si `ven_id` no matchea `/^[0-9A-Fa-f]{4}$/` |
@@ -185,12 +187,12 @@ Corresponde al caso de uso de `DescripcionDiagramaPrueba1.md` (Javier, Gamer, `V
 | 9 | Servicio | `recommendation.service.ts` → aplica reglas de negocio: prioriza `is_whql_certified = TRUE` para Office, `file_size_mb` ascendente, y adjunta `download_url` del contenedor `drivers/` | — |
 | 10 | Ruteo | `recommendations.controller.ts` → `res.status(200).json({data: dto, meta: {...}})` → `middlewares/errorHandler.ts` en caso contrario | `200 OK` con JSON de ~1 KB |
 | 11 | Presentación | `App.tsx` → columna "Drivers a Actualizar" → clic **Install** | — |
-| 12 | Negocio Local | `src-tauri/src/commands/drivers.rs` → `#[tauri::command] fn install_driver(url, flags)` → descarga **directa** desde `https://driwinstorage.blob.core.windows.net/drivers/amd-adrenalin-24.9.1-win11-64bit.exe` → `powershell::run("pnputil /add-driver ... /install")` o `Start-Process -ArgumentList '-install'` | Usa `silent_install_flags` = `'-install'` de la fila `(1,1,...)` |
+| 12 | Negocio Local | `electron/driverInstaller.ts` → `installDriver({ downloadUrl, sha256 })` (canal IPC `driver:install`) → descarga **directa** desde `https://driwinstorage.blob.core.windows.net/drivers/...` → verifica SHA-256 y firma Authenticode → abre el instalador del fabricante con UAC | Sin argumentos silenciosos: la persona ve y acepta los términos del fabricante (`silent_install_flags` quedó sin uso) |
 | 13 | Blob | **Azure Blob Storage (`driwinstorage`, contenedor `drivers`)** entrega el binario de 540 MB **sin pasar por la API** | Offloading verificado en `DiagramaPrueba1.md` aristas 7-8 y `THIRD_PARTY_LICENSES.md` §2.3 |
 
 > **Trazabilidad de la capa 4:** las 9 consultas de prueba de `db/init.sql` (líneas 354-449) son, en la práctica, la **especificación ejecutable** de los `services` que faltan: N.º 8 y N.º 9 alimentan `recommendation.service.resolveDriver()`, N.º 1-3 alimentan `resolveApps()`, N.º 6 alimenta `subscription.service.checkDeviceQuota()`, N.º 4-5 son las pruebas de integridad del repositorio.
 
-### 1.4 Estructura de carpetas en capas — API Express/TS y Capa Local Tauri (diseño exacto, 🟡)
+### 1.4 Estructura de carpetas en capas — API Express/TS y Capa Local Electron
 
 Diseño propuesto para las dos capas que hoy no existen. Se alinea con las capas 2, 3, 4 y 5 de §1.2 y con la separación **routes → controllers → services → repositories** pedida por el criterio B2.
 
@@ -258,18 +260,16 @@ DriWinProyect/
 │       ├── hardware.repository.test.ts  # integración contra BD de prueba
 │       └── recommendations.e2e.test.ts  # supertest contra la app Express
 │
-└── src-tauri/                           # ── CAPA 2: NEGOCIO LOCAL (Rust + Tauri, ejecución en el PC cliente) ──
-    ├── Cargo.toml                       # dependencias: tauri 2.x, serde, serde_json, thiserror
-    ├── tauri.conf.json                  # identificador, ventana, config de capabilities/permisos
-    └── src/
-        ├── main.rs                      # tauri::Builder::default().invoke_handler(generate_handler![...]).run()
-        ├── lib.rs
-        ├── commands/
-        │   ├── hardware.rs              # detect_hardware() → HardwareSnapshot { ven_id, dev_id, subsys_id, os_environment }
-        │   ├── drivers.rs               # download_driver(), install_driver(url, flags) → pnputil / add-driver
-        │   └── bloatware.rs             # scan_bloatware(rules) / remove_bloatware(ids)
-        ├── powershell.rs                # ejecución de procesos con std::process::Command, captura de stdout/stderr
-        └── error.rs                     # enum CommandError → serializado al front como { code, message }
+└── app-inicio-windows/electron/        # ── CAPA 2: NEGOCIO LOCAL (Electron + TypeScript, proceso main en el PC cliente) ──
+    ├── main.ts                          # ventana, protocolo app://driwin, canales IPC con verificación del emisor
+    ├── preload.cts                      # contextBridge: expone window.driwin al front (sandbox + contextIsolation)
+    ├── hardwareScanner.ts               # scanHardware() → PowerShell Get-CimInstance → VEN/DEV + versión del driver
+    ├── driverInstaller.ts               # descarga, SHA-256, firma Authenticode y apertura del instalador del fabricante
+    ├── installerPolicy.ts               # lista permitida de orígenes (solo driwinstorage/drivers/*.exe)
+    ├── bloatwareCleaner.ts              # Get-AppxPackage / Remove-AppxPackage (solo el usuario actual)
+    ├── bloatwarePolicy.ts               # paquetes permitidos y de riesgo alto
+    ├── appInstaller.ts · appPolicy.ts   # winget --interactive con lista permitida
+    └── elevated.ts                      # tareas con UAC: script fijo + datos en base64 (-EncodedCommand)
 ```
 
 **Regla de dependencia entre capas (arquitectura limpia):** `routes → controllers → services → repositories → pg/PowerShell`. Ninguna flecha hacia atrás: el repositorio nunca conoce Express, el controller nunca escribe SQL, el servicio nunca arma `res.json()`. El front sólo conoce `src/services/api.ts`.
@@ -329,16 +329,32 @@ DriWinProyect/
 | **Azure Blob Storage** | cuenta `driwinstorage` (`https://driwinstorage.blob.core.windows.net`) | 32 URLs en `init.sql` (20 en `/apps/`, 12 en `/drivers/`) | Offloading: la API entrega **sólo metadata** (~1 KB) y el binario pesado (hasta 2.900 MB en `DaVinci Resolve`) va cliente → Blob |
 | Tipos de blob | `Hot` LRS (diseño) | `Borrador.md`, `DiagramaPrueba1.md` | Acceso frecuente a bajo costo dentro de los créditos Azure for Students |
 
-### 2.4 Capa de Negocio Local — 🟡 diseñada (Rust confinado al cliente)
+### 2.4 Capa de Negocio Local — TypeScript + Electron (diseñada en Rust + Tauri)
 
-| Tecnología | Versión publicada verificada (`npm view`, 21-10-2026) | Rol técnico | Problema técnico en DriWin |
+| Tecnología | Versión en el proyecto | Rol técnico | Problema técnico en DriWin |
 |---|---|---|---|
-| `@tauri-apps/cli` | `2.12.4` | CLI de build/packaging del binario Windows | Empaqueta el front React como app de escritorio sin Chromium propio ( WebView2 ) |
-| `@tauri-apps/api` | `2.12.4` | Puente `invoke()` front ↔ comandos Rust | Expone `detect_hardware`, `install_driver`, `remove_bloatware` al UI |
-| **Rust** (lenguaje) | toolchain estable | Lenguaje de la capa local | Acceso seguro a bajo nivel: `std::process::Command` para `powershell.exe`/`pnputil.exe`, sin riesgo de memoria al parsear salida de WMI |
+| `electron` | `44.11.0` (fijada) | Runtime de escritorio: Chromium para la interfaz + Node.js en el proceso main | Ejecuta la app React como programa de Windows y da acceso controlado al sistema desde el proceso main |
+| `electron-builder` | `26.17.0` | Empaquetado | Genera el instalador NSIS y la versión portable (`npm run dist:win`) |
+| **TypeScript** (lenguaje) | `~6.0.2` | Lenguaje de la capa local, igual que en el front y la API | Los mismos tipos y herramientas en todo el proyecto; `child_process.execFile` lanza `powershell.exe` sin pasar por una consola |
 | PowerShell / WMI-CIM | incluido en Windows | APIs de sistema | `Get-CimInstance Win32_VideoController`, `Win32_PnPEntity`, `Get-AppxPackage`; registro `HKLM\SYSTEM\CurrentControlSet\Enum\PCI\VEN_xxxx&DEV_xxxx` |
 
-> **Justificación de confinamiento (para la defensa):** en el cliente el trabajo es **CPU-bound y privilegiado** (elevar UAC, parsear WMI, ejecutar `pnputil`), donde Rust aporta seguridad de memoria y control de sistema — exactamente el argumento "Uso a bajo nivel: Muy Alta" de la Tabla de la sección 7 del PDF `Propuesta_Tecnica.pdf`. **No hay razón** para exponer ese código a Internet.
+> **Por qué TypeScript + Electron y no Rust + Tauri (decisión tomada al construir la capa local).** En esta auditoría (21-10) la capa local estaba diseñada en Rust con Tauri, siguiendo el argumento "Uso a bajo nivel: Muy Alta" del Hito 1. Al construirla comparamos tres alternativas:
+>
+> | Criterio | Rust + Tauri (diseño del 21-10) | **TypeScript + Electron (construido)** | C# + WinUI 3 (descartada en el Hito 1) |
+> |---|---|---|---|
+> | Conocimiento del equipo | Nadie lo dominaba; el propio Hito 1 lo calificó de "tarea complicada" | **Todo el equipo ya usa TypeScript** en el front y en la API | Nadie lo dominaba |
+> | Un solo lenguaje en el proyecto | No: Rust en la app y TypeScript en el resto | **Sí**: mismos tipos, linter y forma de probar en app, API y pruebas | No |
+> | Acceso a Windows (WMI/CIM, pnputil, Appx, winget, UAC) | `std::process::Command` → PowerShell | `child_process.execFile` → PowerShell: **el mismo mecanismo** | APIs nativas de .NET |
+> | Aislamiento del código con privilegios | *capabilities* de Tauri | `contextIsolation`, `sandbox`, verificación del emisor en cada canal IPC y Content-Security-Policy | Modelo de la app nativa |
+> | Tamaño del instalador | **Pocos MB** (usa el WebView2 que trae Windows) | ~121 MB (incluye su propio Chromium) | Intermedio (depende del runtime de .NET) |
+> | Consumo de memoria | Bajo | Mayor (un proceso de Chromium) | Medio |
+> | Pruebas | Herramientas propias de Rust (`cargo test`) | Las mismas de Node (`node --test`): 77 pruebas de Electron | Herramientas propias de .NET |
+>
+> **El argumento decisivo:** la lectura de hardware que justificaba Rust en el Hito 1 la hace **PowerShell (WMI/CIM)** en cualquiera de los diseños. Rust solo habría sido el intermediario que lanza ese proceso y lee su salida, así que su ventaja (seguridad de memoria y control de bajo nivel) no se aprovechaba, mientras que su costo (aprender un lenguaje nuevo en pocas semanas) sí caía sobre la entrega. Con TypeScript, los tres integrantes pueden mantener y explicar toda la app, que es lo que pide la defensa.
+>
+> **Costo asumido:** instalador de ~121 MB y más memoria que Tauri. **Mitigación:** la app se instala una sola vez, los drivers pesados no van dentro del instalador (se descargan de Blob cuando se necesitan) y hay versión portable. **Cuándo lo revisaríamos:** si el tamaño o la memoria se vuelven una queja real de usuarios; Tauri 2 permite reutilizar el mismo front React, así que solo habría que reescribir la capa local.
+>
+> Igual que en el diseño original, este código **nunca se expone a Internet**: vive en el PC de la persona y solo ejecuta tareas fijas.
 
 ### 2.5 API REST en la nube — 🟡 diseñada (Node.js + Express + TypeScript)
 
@@ -364,7 +380,7 @@ Versiones publicadas verificadas con `npm view` el 21-10-2026:
 
 > La **Capa de Negocio** definida en el Hito 1 se divide en dos dominios con tecnologías distintas y justificación explícita:
 >
-> 1. **Rust (Tauri) → Capa de Negocio LOCAL**, estrictamente confinada al PC del cliente: ejecución a bajo nivel de PowerShell/WMI/pnputil, lectura de `VEN_ID`/`DEV_ID`, instalación desatendida y limpieza de bloatware. Requiere privilegios elevados y **nunca** debe exponerse a Internet.
+> 1. **TypeScript (Electron) → Capa de Negocio LOCAL** (en el diseño del 21-10 era Rust con Tauri; ver §2.4), estrictamente confinada al PC del cliente: ejecución a bajo nivel de PowerShell/WMI/pnputil, lectura de `VEN_ID`/`DEV_ID`, instalación desatendida y limpieza de bloatware. Requiere privilegios elevados y **nunca** debe exponerse a Internet.
 > 2. **Node.js + Express + TypeScript → runtime oficial de la API REST en la nube** para el Hito 2, usando el driver `pg` sobre Azure PostgreSQL.
 >
 > **Argumento técnico de este refinamiento:** la API cloud es **I/O-bound** por naturaleza (espera consultas SQL y devuelve texto: nombres + URLs), no CPU-bound. En cargas I/O-bound el modelo de eventos de Node.js entrega rendimiento comparable al de un runtime hilos, y a cambio obtiene: (a) **unificación de TypeScript e interfaces de datos con el Front-End React** (el mismo `DriverPackage` puede vivir en un paquete compartido), (b) **reducción de la curva de aprendizaje para los 3 integrantes** (ya dominan TS desde el Hito 1), y (c) **garantía de cumplimiento de plazos** del Hito 2.
@@ -1017,15 +1033,15 @@ Errores: `400` si `profiles` vacío, `404` si algún perfil no existe, `200` con
 | **Negocio (Lógica Local + API en Servidor)** | **Local:** comandos PowerShell/WMI para extraer `VEN/DEV` y desinstalar bloatware. **Servidor:** API alojada en **Microsoft Azure** que recibe los identificadores y decide qué priorizar (p. ej. baja latencia si el perfil es "Gamer") y devuelve la URL de descarga |
 | **Datos (Almacenamiento en Nube)** | Sistema en **Azure** con la base de datos del proyecto (catálogo de componentes más comunes); almacena la relación **repositorios PCI/USB ID ↔ nombre comercial ↔ URL de descarga directa**. *Responsabilidad:* responder exclusivamente a instrucciones SQL emitidas por la Capa de Negocio |
 
-> **Dato clave de trazabilidad:** el Hito 1 **no especificó el lenguaje del back-end de servidor con nombre de framework**; sólo dijo "API alojada en Microsoft Azure" y eligió Rust como lenguaje del proyecto. `docs/DiagramaMD/DiagramaBackEnd/DiagramaPrueba1.md` lo rotuló como `API REST en Azure Node.js/Python`. Esa ambigüedad es la que se cierra en el Hito 2 con la decisión dual documentada en §2.5.
+> **Dato clave de trazabilidad:** el Hito 1 **no especificó el lenguaje del back-end de servidor con nombre de framework**; sólo dijo "API alojada en Microsoft Azure" y eligió Rust como lenguaje del proyecto. `docs/DiagramaMD/DiagramaBackEnd/DiagramaPrueba1.md` lo rotuló como `API REST en Azure Node.js/Python`. Esa ambigüedad es la que se cierra en el Hito 2 con la decisión dual documentada en §2.5. Al construir la capa local, Rust también se reemplazó por TypeScript (Electron), por las razones de la §2.4: hoy todo el proyecto usa un solo lenguaje.
 
 ### 4.2 Evolución de los artefactos (Hito 1 → Hito 2)
 
 | Elemento | Hito 1 (propuesta) | Estado actual (Hito 2) | Por qué cambió | Impacto |
 |---|---|---|---|---|
 | **Front-End** | React + TypeScript + CSS | ✅ Implementado: `app-inicio-windows/` (React 19.2.8, Vite 8.2.2, TS 6.0.3, Oxlint) | Decisión original confirmada y actualizada a versiones 2026 | Sin impacto negativo; es la base del prototipo en Vercel |
-| **Back-End de servidor** | "Rust" (opción 1) / "Node.js o Python" (diagrama) | 🟡 **Node.js + Express + TypeScript + `pg`** para la API cloud; **Rust (Tauri) confinado a la capa local** | La API es **I/O-bound** (SQL + entrega de URLs); TS unifica interfaces con el front, reduce la curva para los 3 integrantes y asegura plazos. Costo: más RAM, mitigado por el *offloading* a Blob (§2.5) | Define el `server-api/` de §1.4 y todo el contrato de §3 |
-| **Capa local** | "PowerShell/WMI" mencionado sin framework | 🟡 **Tauri 2.12.4 + Rust** (`src-tauri/`) con comandos `detect_hardware`, `install_driver`, `remove_bloatware` | Formaliza el "Uso a bajo nivel: Muy Alta" del Hito 1 en un runtime concreto con empaquetado de escritorio | Requiere `src-tauri/`, `Cargo.toml` y capabilities (H-02) |
+| **Back-End de servidor** | "Rust" (opción 1) / "Node.js o Python" (diagrama) | 🟡 **Node.js + Express + TypeScript + `pg`** para la API cloud; la capa local, diseñada en Rust (Tauri), se construyó también en **TypeScript (Electron)** | La API es **I/O-bound** (SQL + entrega de URLs); TS unifica interfaces con el front, reduce la curva para los 3 integrantes y asegura plazos. Costo: más RAM, mitigado por el *offloading* a Blob (§2.5) | Define el `server-api/` de §1.4 y todo el contrato de §3 |
+| **Capa local** | "PowerShell/WMI" mencionado sin framework | ✅ **Electron 44 + TypeScript** (`app-inicio-windows/electron/`) con canales IPC `hardware:scan`, `driver:install`, `bloatware:remove` | Se diseñó en Rust/Tauri, pero el trabajo de bajo nivel lo hace PowerShell en ambos casos: con TypeScript el proyecto queda en un solo lenguaje que todo el equipo domina (§2.4) | Instalador de ~121 MB (incluye Chromium); a cambio, todo el equipo puede mantener la capa local |
 | **Motor de BD** | "Base de datos en Azure" (sin motor) | ✅ **Azure Database for PostgreSQL Flexible Server 16** | `Borrador.md`: se comparó Azure SQL Database vs PostgreSQL y se eligió PostgreSQL por (1) estándar relacional e integridad referencial del catálogo VEN/DEV, (2) costo con instancias *burstable* B1ms dentro de los créditos Azure for Students, (3) `JSONB` para datos desestructurados futuros. **Costo asumido:** sin auto-pausa a cero y `pg_hba.conf` más explícito | `db/init.sql` + §5 de este documento |
 | **Modelo de datos** | Sin tablas (sólo diagrama de capas) | ✅ **8 tablas** (`init.sql`, 449 líneas) | Evolución verificable en Git: `e857fd0` (3 tablas: `user_profiles`, `hardware_components`, `driver_packages` + 1 índice, 81 líneas) → `01375c0` (8 tablas, 4 índices, 15 restricciones, 449 líneas) | Habilita CRUD de 5 recursos y las 9 consultas de prueba |
 | **Almacenamiento binario** | "URL de descarga directa de los fabricantes" | ✅ **`driwinstorage`** con contenedores **`apps`** (20 objetos) y **`drivers`** (12 objetos); patrón *offloading* | Centralizar la descarga en un almacén propio permite control de versiones y coherencia con `silent_install_flags`; el API sólo devuelve texto | 32 URLs en `init.sql`; §7 (costo/escala) |
@@ -1053,7 +1069,7 @@ flowchart LR
     classDef done fill:#2ed573,stroke:#222831,color:#111;
     classDef des fill:#ffd32a,stroke:#222831,color:#111;
     A["Hito 1: Capa Presentación (React)"]:::done --> A1["app-inicio-windows/src/App.tsx + theme.css"]
-    B["Hito 1: Capa Negocio Local (PowerShell/WMI)"]:::des --> B1["src-tauri/ (diseñado) + simulación en useEffect(2000ms)"]
+    B["Hito 1: Capa Negocio Local (PowerShell/WMI)"]:::des --> B1["app-inicio-windows/electron/ (Electron + TypeScript)"]
     C["Hito 1: API en Azure"]:::des --> C1["server-api/ Express+TS (diseñado, §3)"]
     D["Hito 1: BD en Azure"]:::done --> D1["db/init.sql → PostgreSQL 16 Flexible Server"]
     E["Hito 1: URLs de descarga"]:::done --> E1["driwinstorage: contenedores apps/ y drivers/"]
@@ -1392,8 +1408,8 @@ VITE_API_BASE_PATH=/api/v1
 | 2 | Inyección SQL | — | **Sólo** SQL parametrizado `$1..$n` en `repositories/`; prohibido concatenar; revisión de código en PR |
 | 3 | API abierto a Internet | — | `X-API-Key` sólo para escrituras (`401`; la antigua clave de sólo lectura, embebida en el .exe, fue revocada), `helmet`, CORS allowlist, `express-rate-limit` (60 req/min) |
 | 4 | Intercepts de la conexión a BD | — | `sslmode=require` + firewall de Flexible Server + usuario dedicado con privilegios mínimos (sólo `SELECT/INSERT/UPDATE/DELETE` en `public`) |
-| 5 | Lectura indebida de hardware sin consentimiento | Modal UAC en `App.tsx` (simulado) | Tauri **capabilities**: sólo el comando `detect_hardware` requiere elevación; declaración en `THIRD_PARTY_LICENSES.md` §3.3 (sin RUT, correo ni historial) |
-| 6 | Instalación de binario manipulado | URLs fijas en `init.sql` | Verificación de hash SHA-256 en `install_driver()` antes de ejecutar; migración a **enlaces oficiales** (hallazgo H-05 legal) |
+| 5 | Lectura indebida de hardware sin consentimiento | Modal UAC en `App.tsx` (simulado) | Electron con `contextIsolation` y `sandbox`: los canales IPC verifican el emisor y solo las tareas fijas piden elevación (UAC); declaración en `THIRD_PARTY_LICENSES.md` §3.3 (sin RUT, correo ni historial) |
+| 6 | Instalación de binario manipulado | URLs fijas en `init.sql` | Verificación de hash SHA-256 y firma Authenticode en `electron/driverInstaller.ts` antes de ejecutar; migración a **enlaces oficiales** (hallazgo H-05 legal) |
 | 7 | Escalar privilegios vía `removal_powershell_cmd` | — | Whitelist: el cliente **nunca** ejecuta comandos arbitrarios del cliente HTTP, sólo los de `bloatware_rules` descargados de la API (HTTPS) y validados contra una lista permitida local (`electron/bloatwarePolicy.ts`) y `ck_bloatware_risk` |
 | 8 | Datos personales | Minimización (sin PII); `synthetic_users` es semilla de prueba | Evaluar **Ley N° 21.719** (vigente 01-12-2026) antes del alta real de usuarios (`THIRD_PARTY_LICENSES.md` §8) |
 | 9 | Errores que filtren infraestructura | — | `errorHandler.ts` responde `INTERNAL_ERROR` genérico; stack sólo en logs con nivel `debug` |
@@ -1405,12 +1421,12 @@ VITE_API_BASE_PATH=/api/v1
 
 ### 7.1 Postura adoptada
 
-> **"Cliente-Servidor modular desacoplado en el tráfico pesado"**: una **aplicación de cliente rica** (monolito modular React + capa local Rust/Tauri) frente a un **servicio de metadatos monolítico en Azure** (Express/TS + PostgreSQL Flexible Server), con el **tráfico binario delegado a un servicio externo** (Azure Blob Storage). Es decir: ni un monolito absoluto, ni microservicios.
+> **"Cliente-Servidor modular desacoplado en el tráfico pesado"**: una **aplicación de cliente rica** (monolito modular React + capa local Electron/TypeScript) frente a un **servicio de metadatos monolítico en Azure** (Express/TS + PostgreSQL Flexible Server), con el **tráfico binario delegado a un servicio externo** (Azure Blob Storage). Es decir: ni un monolito absoluto, ni microservicios.
 
 | Componente | ¿Monolito o distribuido? |
 |---|---|
 | Interfaz + lógica de presentación | Monolito (SPA React, un solo bundle) |
-| Lógica local de Windows | Módulo aislado dentro del binario del cliente (Tauri) |
+| Lógica local de Windows | Módulo aislado dentro del binario del cliente (proceso main de Electron) |
 | API de metadatos | **Monolito modular** (routes/services/repositories en un único proceso Node) |
 | Persistencia | Servicio gestionado externo (Azure PostgreSQL Flexible Server) |
 | Binarios (drivers/apps) | **Externo**: `driwinstorage` contenedores `apps` y `drivers` |
@@ -1434,7 +1450,7 @@ VITE_API_BASE_PATH=/api/v1
 | Factor | Consecuencia arquitectónica |
 |---|---|
 | 3 desarrolladores (Vicente Acevedo, Javier Cáceres, Joaquín Castillo) | **Microservicios multiplicarían el *toil***: cada servicio exige repo, pipeline, despliegue, monitoreo y contrato propio → 3-4× más superficie que una sola persona puede operar |
-| Curva de aprendizaje ya comprometida (Rust en Hito 1) | Se **confinó Rust a la capa local** (área pequeña y de alto valor) y se usó **TypeScript en el back**, unificando lenguaje con el front y reduciendo el costo cognitivo |
+| Curva de aprendizaje ya comprometida (Rust en Hito 1) | Primero se **confinó Rust a la capa local** y se usó **TypeScript en el back**; al construir la capa local también se reemplazó Rust por TypeScript (Electron), dejando **un solo lenguaje** en todo el proyecto (§2.4) |
 | Plazo académico del Hito 2 | Un monolito modular permite entregar CRUD completo (§3) iterando sobre una **base de código única**, sin orquestación |
 | Sin equipo de DevOps ni SRE | Se prefieren **servicios gestionados** de Azure (Flexible Server, Blob) a infraestructura propia: quien opera es Azure, no el equipo |
 | Requisito de defensa trazable | Un solo proceso permite mostrar de punta a punta `route → controller → service → repository → SQL` sin saltos entre contenedores |
@@ -1491,8 +1507,8 @@ Sin Kubernetes, sin mesh de servicios, sin broker de mensajes, sin descubrimient
 | Node.js | ≥ 20 LTS (probado: **v24.21.0**) | `node -v` |
 | npm | ≥ 10 (probado: **11.19.0**) | `npm -v` |
 | PostgreSQL client (`psql`) | 16 | `psql --version` |
-| (Capa local) Rust + `cargo` | estable | `cargo --version` |
-| (Capa local) Visual Studio Build Tools / WebView2 | — | requerido por Tauri 2 en Windows |
+| (App de escritorio) Windows | 10 u 11, x64 | El escaneo y las instalaciones usan PowerShell de Windows |
+| (App de escritorio) Electron | 44 (se instala con `npm ci`) | `npx electron --version` |
 | Cuenta | Azure for Students con `driwin-db-server` y cuenta `driwinstorage` | — |
 
 ### 8.2 Clonar el repositorio
@@ -1624,14 +1640,17 @@ curl -i -X POST http://localhost:3000/api/v1/hardware-components \
 curl -i -X DELETE http://localhost:3000/api/v1/hardware-components/5 -H "X-API-Key: $API_KEY"   # 204
 ```
 
-### 8.7 🟡 Levantar la Capa Local Tauri (cuando exista `src-tauri/`, §1.4)
+### 8.7 Levantar la app de escritorio (Electron, `app-inicio-windows/electron/`)
 
 ```bash
 cd app-inicio-windows
 npm ci
-npm i -D @tauri-apps/cli
-npm run tauri dev       # requiere PowerShell como Administrador para WMI/pnputil
+npm run electron:dev     # app de escritorio contra la API local
+npm run electron:start   # app de escritorio contra la API publicada en Azure
+npm run dist:win         # instalador NSIS y versión portable en release/
 ```
+
+El escaneo de hardware no necesita permisos de administrador; instalar drivers o quitar bloatware abre el aviso de UAC de Windows.
 
 ### 8.8 Solución de problemas
 
@@ -1659,8 +1678,8 @@ Verificadas comparando `app-inicio-windows/src/App.tsx` con `db/init.sql`. Son *
 | A-4 | Apps instalables | 4 fijas: Steam, VS Code, Discord, Git | 20 apps repartidas en 4 perfiles | Consumir `GET /api/v1/recommendations/apps?profiles=...` |
 | A-5 | Plan Premium | `$9.99 USD` anual (línea 335) | Planes en CLP: $5.000 / $30.000 / $1.500.000 (`subscription_tiers`) | Unificar moneda y planes con la BD |
 | A-6 | Perfil persistido | `localStorage['driwin_profile']` = `"Gamer & Creator"` (cadena libre) | `synthetic_users.selected_profiles_array TEXT[]` | Persistir array canónico vía `POST/PATCH /api/v1/synthetic-users` |
-| A-7 | Permisos UAC | `setHasAdminRights(true)` por clic (sin elevar de verdad) | — | Sustituir por `invoke('detect_hardware')` de Tauri, que falla si no hay elevación |
-| A-8 | Escaneo VEN/DEV | `setTimeout(2000)` que marca `parallelScanDone` | — | Sustituir por el comando `detect_hardware` real |
+| A-7 | Permisos UAC | `setHasAdminRights(true)` por clic (sin elevar de verdad) | — | Resuelto con Electron: el escaneo no necesita elevación y el UAC real se pide solo al instalar o quitar bloatware (`electron/elevated.ts`) |
+| A-8 | Escaneo VEN/DEV | `setTimeout(2000)` que marca `parallelScanDone` | — | Resuelto: canal IPC `hardware:scan` real (`electron/hardwareScanner.ts`) |
 
 ---
 

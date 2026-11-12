@@ -1,6 +1,6 @@
 {
   "name": "driwin-server-api",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "API REST en la nube de DriWin (Node.js + Express + TypeScript + PostgreSQL/Azure) — Hito 2",
   "private": true,
   "main": "dist/server.js",

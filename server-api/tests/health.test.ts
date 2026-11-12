@@ -1,7 +1,9 @@
+import fs from 'node:fs';
 import request from 'supertest';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 import { app } from '../src/app';
 import { closePool } from '../src/config/db';
+import { API_VERSION } from '../src/config/version';
 import { HealthRepository } from '../src/repositories/health.repository';
 
 describe('GET /api/v1/health (capas: controlador → servicio → repositorio)', () => {
@@ -18,10 +20,13 @@ describe('GET /api/v1/health (capas: controlador → servicio → repositorio)',
     expect(res.headers['cache-control']).toBe('no-store');
     expect(res.body).toMatchObject({
       status: 'ok',
-      version: '1.0.0',
+      version: API_VERSION,
       database: 'up',
       latency_ms: 3.21,
     });
+    // La versión informada debe ser la de package.json (regla de config/version.ts).
+    const pkg = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string };
+    expect(res.body.version).toBe(pkg.version);
   });
 
   it('responde 503 DB_UNAVAILABLE cuando la base de datos no responde', async () => {
