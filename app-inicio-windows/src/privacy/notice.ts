@@ -8,7 +8,7 @@
  *
  * El texto de cada sección está en i18n (privacy.<id>.title / .body).
  */
-export const PRIVACY_NOTICE_VERSION = '2026-11-10';
+export const PRIVACY_NOTICE_VERSION = '2026-11-13';
 
 /**
  * Correo de contacto (soporte y privacidad). Ficticio en esta versión: el

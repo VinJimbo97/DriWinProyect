@@ -6,4 +6,4 @@
  * la API sólo acepta registros con la versión vigente, y a las cuentas que
  * aceptaron una versión anterior la app les pide aceptar la nueva.
  */
-export const PRIVACY_NOTICE_VERSION = '2026-11-10';
+export const PRIVACY_NOTICE_VERSION = '2026-11-13';
