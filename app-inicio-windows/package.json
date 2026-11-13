@@ -1,7 +1,7 @@
 {
   "name": "app-inicio-windows",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "DriWin: instalador de drivers y apps según el perfil del usuario",
   "author": "Equipo DriWin (Vicente Acevedo, Javier Cáceres, Joaquín Castillo)",
   "type": "module",
