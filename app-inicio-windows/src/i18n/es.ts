@@ -267,13 +267,13 @@ export const es = {
     'Aquí te contamos qué datos usa DriWin, para qué y qué puedes hacer con ellos, según la Ley 19.628 y la Ley 21.719 de protección de datos personales de Chile.',
   'privacy.who.title': '¿Quién es responsable de tus datos?',
   'privacy.who.body':
-    'DriWin, un proyecto académico desarrollado en Chile. Contacto para temas de privacidad: {email} (dirección de demostración en esta versión).',
+    'DriWin, desarrollado y operado en Chile, es el responsable del tratamiento de tus datos. Contacto para temas de privacidad: {email}.',
   'privacy.noAccount.title': 'Si usas DriWin sin cuenta (versión gratis)',
   'privacy.noAccount.body':
     '• El escaneo de tu hardware se hace solo en tu PC.\n• Para recomendarte drivers, la app envía a nuestro servidor los códigos de modelo de tus dispositivos (por ejemplo, VEN_8086 DEV_51F0), tu versión de Windows y el perfil que elegiste. No incluyen tu nombre, el nombre del PC ni números de serie, y no se guardan.\n• Tus preferencias (idioma, tema y perfil) quedan solo en este equipo.\n• Para frenar abusos, el servidor usa tu dirección IP en memoria durante unos minutos. No la guarda.',
   'privacy.account.title': 'Si creas una cuenta (DriWin Premium)',
   'privacy.account.body':
-    '• Tu correo, guardado cifrado.\n• Tu contraseña, solo como una huella que no se puede revertir (nunca la contraseña).\n• Tus equipos (hasta 3), como un código aleatorio que crea la app: sin nombre del PC ni datos del hardware.\n• Tus sesiones abiertas y sus fechas.\n• Tus compras: plan, fechas, monto y referencia. En esta versión el pago es simulado: no pedimos datos de tarjeta.\n• Tus consultas al soporte técnico, con el mensaje cifrado.\n• Qué versión de este aviso aceptaste y cuándo.',
+    '• Tu correo, guardado cifrado.\n• Tu contraseña, solo como una huella que no se puede revertir (nunca la contraseña).\n• Tus equipos (hasta 3), como un código aleatorio que crea la app: sin nombre del PC ni datos del hardware.\n• Tus sesiones abiertas y sus fechas.\n• Tus compras: plan, fechas, monto y referencia. Mientras los pagos estén en modo de prueba, no pedimos datos de tarjeta.\n• Tus consultas al soporte técnico, con el mensaje cifrado.\n• Qué versión de este aviso aceptaste y cuándo.',
   'privacy.purpose.title': '¿Para qué los usamos?',
   'privacy.purpose.body':
     'Solo para crear y proteger tu cuenta, activar Premium en tus equipos, responder tus consultas y llevar el registro de ventas. No los usamos para publicidad, no los vendemos ni los compartimos con otras empresas, y no tomamos decisiones automáticas sobre ti.',
@@ -312,11 +312,11 @@ export const es = {
   'premium.plan.extend': 'Extender',
   'premium.plan.chooseHint': 'Continuar al pago (simulado).',
   'premium.plan.loginHint': 'Inicia sesión o crea tu cuenta para continuar.',
-  'premium.plan.simulatedNote': 'Versión de prueba: el pago es simulado y no se cobra nada.',
+  'premium.plan.simulatedNote': 'Pago en modo de prueba: no se cobra nada.',
   'purchase.title': 'Confirmar compra',
   'purchase.extends': 'Ya tienes Premium: el plan nuevo empieza cuando termine el actual ({date}).',
   'purchase.simulated':
-    'Pago simulado: esta versión de prueba no cobra nada ni pide datos de tarjeta. En la versión final se pagaría con un medio de pago externo.',
+    'Pago en modo de prueba: no se cobra nada ni se piden datos de tarjeta. Cuando se activen los cobros, el pago se hará a través de una pasarela de pago externa.',
   'purchase.confirm': 'Confirmar compra',
   'purchase.done.title': '✓ ¡Listo! DriWin Premium activado',
   'purchase.done.text': 'Tienes {plan}, vigente hasta el {date}.',

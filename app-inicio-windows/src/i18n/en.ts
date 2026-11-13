@@ -263,13 +263,13 @@ export const en: Record<MessageKey, string> = {
     'This explains what data DriWin uses, why, and what you can do about it, under Chilean personal data protection Laws 19,628 and 21,719.',
   'privacy.who.title': 'Who is responsible for your data?',
   'privacy.who.body':
-    'DriWin, an academic project developed in Chile. Privacy contact: {email} (demo address in this version).',
+    'DriWin, developed and operated in Chile, is the controller of your personal data. Privacy contact: {email}.',
   'privacy.noAccount.title': 'If you use DriWin without an account (free version)',
   'privacy.noAccount.body':
     '• Your hardware scan runs only on your PC.\n• To recommend drivers, the app sends our server the model codes of your devices (for example, VEN_8086 DEV_51F0), your Windows version and the profile you chose. They do not include your name, your PC name or serial numbers, and they are not stored.\n• Your preferences (language, theme and profile) stay on this computer only.\n• To prevent abuse, the server keeps your IP address in memory for a few minutes. It is not stored.',
   'privacy.account.title': 'If you create an account (DriWin Premium)',
   'privacy.account.body':
-    '• Your email, stored encrypted.\n• Your password, only as an irreversible fingerprint (never the password itself).\n• Your computers (up to 3), as a random code created by the app: no PC name or hardware data.\n• Your open sessions and their dates.\n• Your purchases: plan, dates, amount and reference. Payment is simulated in this version: we do not ask for card details.\n• Your support requests, with the message encrypted.\n• Which version of this notice you accepted and when.',
+    '• Your email, stored encrypted.\n• Your password, only as an irreversible fingerprint (never the password itself).\n• Your computers (up to 3), as a random code created by the app: no PC name or hardware data.\n• Your open sessions and their dates.\n• Your purchases: plan, dates, amount and reference. While payments are in test mode, we do not ask for card details.\n• Your support requests, with the message encrypted.\n• Which version of this notice you accepted and when.',
   'privacy.purpose.title': 'What do we use it for?',
   'privacy.purpose.body':
     'Only to create and protect your account, activate Premium on your computers, answer your requests and keep a record of sales. We do not use it for advertising, we do not sell it or share it with other companies, and we make no automated decisions about you.',
@@ -308,11 +308,11 @@ export const en: Record<MessageKey, string> = {
   'premium.plan.extend': 'Extend',
   'premium.plan.chooseHint': 'Continue to the (simulated) payment.',
   'premium.plan.loginHint': 'Sign in or create your account to continue.',
-  'premium.plan.simulatedNote': 'Test version: the payment is simulated and nothing is charged.',
+  'premium.plan.simulatedNote': 'Payment in test mode: nothing is charged.',
   'purchase.title': 'Confirm purchase',
   'purchase.extends': 'You already have Premium: the new plan starts when the current one ends ({date}).',
   'purchase.simulated':
-    'Simulated payment: this test version charges nothing and asks for no card details. The final version would use an external payment provider.',
+    'Payment in test mode: nothing is charged and no card details are requested. Once billing is enabled, payment will go through an external payment gateway.',
   'purchase.confirm': 'Confirm purchase',
   'purchase.done.title': '✓ Done! DriWin Premium activated',
   'purchase.done.text': 'You have {plan}, valid until {date}.',

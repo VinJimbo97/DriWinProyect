@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Figura 2 · Modelo entidad-relación de driwin_catalog</title>
+<!--
+  Fuente editable de la Figura 2 del documento técnico (14 tablas, migraciones hasta la 011).
+  Debe coincidir con db/init.sql. Regenerar la imagen con capturar.cjs (ver README.md de esta carpeta).
+-->
+<style>
+  :root { --teal:#2a9fa6; --navy:#0f1b2d; --fk:#b8730a; --ink:#1d2733; --muted:#5b6b7f; }
+  * { box-sizing:border-box; margin:0; }
+  html, body { overflow:hidden; }
+  body { width:1500px; height:970px; background:#fff; font-family:'Segoe UI', Calibri, Arial, sans-serif; color:var(--ink); position:relative; }
+  .band { position:absolute; left:14px; width:1472px; border:1.5px dashed #b9c4d0; border-radius:6px; }
+  .band span { position:absolute; left:14px; top:-11px; background:#fff; padding:0 8px; font-size:13px; font-weight:700; color:var(--muted); letter-spacing:.3px; }
+  .t { position:absolute; width:330px; border:1.6px solid var(--navy); background:#fff; font-size:11.8px; }
+  .t h3 { background:var(--navy); color:#fff; font-size:13.5px; padding:5px 9px; }
+  .t div { padding:2.5px 9px; border-top:1px solid #e3e8ee; white-space:nowrap; line-height:1.25; }
+  .pk { color:var(--teal); font-weight:700; }
+  .fk { color:var(--fk); font-weight:700; }
+  .uk { color:#3b4a5c; font-style:italic; }
+  .new h3 { background:#155e63; }
+  .legend { position:absolute; font-size:12px; color:var(--muted); line-height:1.6; }
+  .lbl { position:absolute; font-size:11px; font-weight:700; color:var(--teal); background:#fff; padding:0 3px; }
+  svg { position:absolute; left:0; top:0; width:1500px; height:970px; pointer-events:none; overflow:visible; }
+</style>
+</head>
+<body>
+
+<div class="band" style="top:22px; height:512px;"><span>CATÁLOGO, PERFILES Y PLANES</span></div>
+<div class="band" style="top:558px; height:398px;"><span>CUENTAS DRIWIN (migraciones 008 y 010) · datos personales cifrados</span></div>
+
+<!-- Columna A -->
+<div class="t" id="hardware_components" style="left:40px; top:44px;">
+  <h3>hardware_components</h3>
+  <div class="pk" data-f="pk">PK component_id SERIAL</div>
+  <div>ven_id · dev_id VARCHAR</div>
+  <div>subsys_id VARCHAR(20) DEFAULT 'GENERIC'</div>
+  <div>commercial_name · category</div>
+  <div class="uk">UK (ven_id, dev_id, subsys_id) · sirve de índice</div>
+</div>
+
+<div class="t" id="driver_packages" style="left:40px; top:250px;">
+  <h3>driver_packages</h3>
+  <div class="pk" data-f="pk">PK driver_id SERIAL</div>
+  <div class="fk" data-f="component_id">FK component_id INT (CASCADE)</div>
+  <div class="fk" data-f="profile_id">FK profile_id INT (RESTRICT)</div>
+  <div>os_environment VARCHAR(30)</div>
+  <div>edition_name · version_number · release_date</div>
+  <div>download_url TEXT (Blob) · file_size_mb INT</div>
+  <div>sha256 VARCHAR(64) CHECK hexadecimal</div>
+  <div>is_whql_certified BOOLEAN</div>
+  <div class="uk">UK (component_id, profile_id, os_environment)</div>
+</div>
+
+<!-- Columna B -->
+<div class="t" id="user_profiles" style="left:410px; top:44px;">
+  <h3>user_profiles</h3>
+  <div class="pk" data-f="pk">PK profile_id SERIAL</div>
+  <div class="uk">UK profile_name VARCHAR(50)</div>
+  <div>optimization_focus TEXT</div>
+</div>
+
+<div class="t" id="profile_apps" style="left:410px; top:200px;">
+  <h3>profile_apps</h3>
+  <div class="fk" data-f="profile_id">PK,FK profile_id INT</div>
+  <div class="fk" data-f="app_id">PK,FK app_id INT</div>
+  <div>assigned_at TIMESTAMP</div>
+</div>
+
+<div class="t" id="recommended_apps" style="left:410px; top:370px;">
+  <h3>recommended_apps</h3>
+  <div class="pk" data-f="pk">PK app_id SERIAL</div>
+  <div class="uk">UK app_name VARCHAR(120)</div>
+  <div>category · version_number · file_size_mb CHECK &gt; 0</div>
+  <div>winget_id VARCHAR(100) CHECK formato</div>
+  <div>official_url TEXT CHECK https://</div>
+</div>
+
+<!-- Columna C -->
+<div class="t" id="bloatware_rules" style="left:780px; top:44px;">
+  <h3>bloatware_rules</h3>
+  <div class="pk" data-f="pk">PK bloatware_id SERIAL</div>
+  <div>app_display_name VARCHAR(150)</div>
+  <div class="uk">UK package_signature</div>
+  <div>package_names TEXT[] CHECK formato</div>
+  <div>detection / removal_powershell_cmd</div>
+  <div>risk_level CHECK BAJO | MEDIO | ALTO</div>
+  <div>description · help_text</div>
+</div>
+
+<div class="t" id="bloatware_profile_policy" style="left:780px; top:290px;">
+  <h3>bloatware_profile_policy</h3>
+  <div class="fk" data-f="bloatware_id">PK,FK bloatware_id INT (CASCADE)</div>
+  <div class="fk" data-f="profile_id">PK,FK profile_id INT (CASCADE)</div>
+  <div>policy CHECK SUGERIDO | OPCIONAL | PROTEGIDO</div>
+</div>
+
+<!-- Columna D -->
+<div class="t" id="subscription_tiers" style="left:1150px; top:44px;">
+  <h3>subscription_tiers</h3>
+  <div class="pk" data-f="pk">PK tier_id SERIAL</div>
+  <div class="uk">UK tier_name VARCHAR(80)</div>
+  <div>price_clp NUMERIC CHECK ≥ 0</div>
+  <div>max_devices INT CHECK &gt; 0</div>
+  <div class="uk">UK duration_months CHECK 12 | 24 | 36</div>
+</div>
+
+<div class="t" id="synthetic_users" style="left:1150px; top:250px;">
+  <h3>synthetic_users</h3>
+  <div class="pk" data-f="pk">PK user_id SERIAL</div>
+  <div>full_name · user_role_type</div>
+  <div class="uk">UK email (@correo-driwin.cl, ficticio)</div>
+  <div class="fk" data-f="tier_id">FK tier_id INT (RESTRICT)</div>
+  <div>selected_profiles_array TEXT[] (índice GIN)</div>
+  <div>active_devices_count INT CHECK ≥ 0</div>
+</div>
+
+<!-- Cuentas -->
+<div class="t new" id="account_devices" style="left:40px; top:586px;">
+  <h3>account_devices</h3>
+  <div class="pk" data-f="pk">PK device_id SERIAL</div>
+  <div class="fk" data-f="account_id">FK account_id INT (CASCADE)</div>
+  <div>device_hash BYTEA (SHA-256 del id aleatorio)</div>
+  <div>registered_at · last_seen_at</div>
+  <div class="uk">UK (account_id, device_hash) · máx. 3 por cuenta</div>
+</div>
+
+<div class="t new" id="account_sessions" style="left:40px; top:778px;">
+  <h3>account_sessions</h3>
+  <div class="pk" data-f="pk">PK session_id SERIAL</div>
+  <div class="fk" data-f="account_id">FK account_id INT (CASCADE)</div>
+  <div class="uk">UK token_hash BYTEA (SHA-256 del token)</div>
+  <div>device_hash · expires_at · revoked_at</div>
+</div>
+
+<div class="t new" id="accounts" style="left:410px; top:586px;">
+  <h3>accounts</h3>
+  <div class="pk" data-f="pk">PK account_id SERIAL</div>
+  <div class="uk">UK email_lookup BYTEA (HMAC-SHA256)</div>
+  <div>email_encrypted BYTEA (AES-256-GCM)</div>
+  <div>password_hash TEXT (scrypt)</div>
+  <div>failed_logins · locked_until</div>
+  <div>privacy_version · privacy_accepted_at</div>
+  <div>CHECK ck_account_privacy (ambas o ninguna)</div>
+</div>
+
+<div class="t new" id="support_tickets" style="left:780px; top:586px;">
+  <h3>support_tickets</h3>
+  <div class="pk" data-f="pk">PK ticket_id SERIAL</div>
+  <div class="fk" data-f="account_id">FK account_id INT (CASCADE)</div>
+  <div>subject VARCHAR(120)</div>
+  <div>message_encrypted BYTEA (AES-256-GCM)</div>
+  <div>status CHECK ABIERTA | RESPONDIDA | CERRADA</div>
+</div>
+
+<div class="t new" id="subscriptions" style="left:780px; top:778px;">
+  <h3>subscriptions</h3>
+  <div class="pk" data-f="pk">PK subscription_id SERIAL</div>
+  <div class="fk" data-f="account_id">FK account_id INT (SET NULL)</div>
+  <div class="fk" data-f="tier_id">FK tier_id INT (RESTRICT)</div>
+  <div>starts_at · ends_at · price_paid_clp</div>
+  <div class="uk">UK payment_reference ('SIM-…' simulado)</div>
+</div>
+
+<div class="legend" style="left:1150px; top:600px; width:320px;">
+  <b style="color:#1d2733">Convenciones</b><br>
+  <span style="color:#2a9fa6; font-weight:700">PK</span> clave primaria ·
+  <span style="color:#b8730a; font-weight:700">FK</span> clave foránea (acción al borrar) ·
+  <i>UK</i> restricción única · CHECK regla validada por el motor<br>
+  Cabecera verde: tablas de la cuenta DriWin.<br>
+  Al borrar una cuenta, sus equipos, sesiones y consultas se eliminan en cascada; las ventas quedan anónimas (account_id = NULL).<br>
+  bloatware_rules y recommended_apps son catálogos independientes del hardware.
+</div>
+
+<svg id="wires"></svg>
+<script>
+  const svg = document.getElementById('wires');
+  const ns = 'http://www.w3.org/2000/svg';
+  svg.innerHTML = `<defs><marker id="one" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="10" markerHeight="10" orient="auto">
+    <path d="M11,1 L11,11" stroke="#2a9fa6" stroke-width="2"/></marker></defs>`;
+  const rect = (sel) => document.querySelector(sel).getBoundingClientRect();
+  const row = (table, field) => rect(`#${table} [data-f="${field}"]`);
+  const path = (d) => { const p = document.createElementNS(ns, 'path'); p.setAttribute('d', d); p.setAttribute('fill', 'none');
+    p.setAttribute('stroke', '#2a9fa6'); p.setAttribute('stroke-width', 1.8); p.setAttribute('marker-end', 'url(#one)'); svg.appendChild(p); };
+  const label = (x, y, text) => { const l = document.createElement('div'); l.className = 'lbl'; l.textContent = text;
+    l.style.left = `${x}px`; l.style.top = `${y - 8}px`; document.body.appendChild(l); };
+
+  /** Une la fila FK de la tabla hija con la fila PK de la tabla padre. */
+  function link(child, field, parent, { mid, side } = {}) {
+    const c = row(child, field), p = row(parent, 'pk');
+    const ct = rect('#' + child), pt = rect('#' + parent);
+    const cy = c.top + c.height / 2, py = p.top + p.height / 2;
+    // La etiqueta "1 : N" va junto a la tabla padre, en el espacio libre entre columnas.
+    if (ct.left >= pt.right) {            // padre a la izquierda
+      const x = mid ?? (pt.right + ct.left) / 2;
+      path(`M ${ct.left} ${cy} L ${x} ${cy} L ${x} ${py} L ${pt.right + 1} ${py}`);
+      label(pt.right + 3, py - 9, '1 : N');
+    } else if (ct.right <= pt.left) {     // padre a la derecha
+      const x = mid ?? (ct.right + pt.left) / 2;
+      path(`M ${ct.right} ${cy} L ${x} ${cy} L ${x} ${py} L ${pt.left - 1} ${py}`);
+      label(pt.left - 31, py - 9, '1 : N');
+    } else {                              // misma columna: sale por un costado y entra a la fila PK
+      const x = side === 'left' ? ct.left - 16 : ct.right + 16;
+      const end = side === 'left' ? pt.left - 1 : pt.right + 1;
+      const start = side === 'left' ? ct.left : ct.right;
+      path(`M ${start} ${cy} L ${x} ${cy} L ${x} ${py} L ${end} ${py}`);
+      label(side === 'left' ? pt.left - 31 : pt.right + 3, py - 9, '1 : N');
+    }
+  }
+
+  link('driver_packages', 'component_id', 'hardware_components', { side: 'left' });
+  link('driver_packages', 'profile_id', 'user_profiles', { mid: 385 });
+  link('profile_apps', 'profile_id', 'user_profiles', { side: 'right' });
+  link('profile_apps', 'app_id', 'recommended_apps', { side: 'left' });
+  link('bloatware_profile_policy', 'bloatware_id', 'bloatware_rules', { side: 'right' });
+  link('bloatware_profile_policy', 'profile_id', 'user_profiles', { mid: 760 });
+  link("synthetic_users", "tier_id", "subscription_tiers", { side: "left" });
+  link('account_devices', 'account_id', 'accounts', { mid: 380 });
+  link('account_sessions', 'account_id', 'accounts', { mid: 392 });
+  link('support_tickets', 'account_id', 'accounts', { mid: 760 });
+  link('subscriptions', 'account_id', 'accounts', { mid: 748 });
+  link('subscriptions', 'tier_id', 'subscription_tiers', { mid: 1125 });
+</script>
+</body>
+</html>

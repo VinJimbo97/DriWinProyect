@@ -20,13 +20,15 @@ Puedes explorar la interfaz y el flujo interactivo de nuestra aplicación en el 
 
 ```text
 DriWinProyect/
-├── app-inicio-windows/     # Frontend React 19 + TypeScript + Vite
+├── app-inicio-windows/     # App de escritorio: Electron 44 + React 19 + TypeScript + Vite
 ├── server-api/             # Back-End Node.js + Express 5 + TypeScript (API REST /api/v1)
 ├── db/
-│   ├── init.sql            # DDL + DML idempotente (8 tablas, 4 índices, semilla)
-│   └── modelo_datos.md     # Diagrama Entidad-Relación (Mermaid) y diccionario
+│   ├── init.sql            # DDL + DML idempotente (14 tablas, 7 índices, semilla)
+│   ├── migrations/         # 002–011: cambios sobre una base existente (007 y 008 crean roles y permisos)
+│   └── modelo_datos.md     # Diagrama Entidad-Relación (Mermaid), restricciones, índices y roles
 ├── docs/
-│   ├── Hito2/              # Documento técnico, contrato de API y consideraciones
+│   ├── Hito2/              # Documento técnico, contrato de API, figuras y consideraciones
+│   ├── qa/                 # QA y seguridad del Hito 3: benchmark, EXPLAIN, STRIDE, navegación, ISO 25010
 │   └── postman/            # Colección de pruebas lista para importar
 ├── .env.example            # Plantilla raíz (backend + frontend, sin secretos)
 └── README.md
@@ -38,6 +40,7 @@ DriWinProyect/
 |---|---|---|
 | **Hito 1** | Propuesta técnica, mapa de usuario y diagrama cliente-servidor | ✅ Entregado |
 | **Hito 2** | Motor Back-End: API REST `/api/v1` + PostgreSQL + Azure Blob (offloading) | ✅ Implementado |
+| **Hito 3** | App de escritorio integrada con la API, cuentas DriWin Premium, seguridad y QA medido | ✅ Implementado · documentación en cierre |
 
 ### Recursos de la API implementados
 
@@ -49,6 +52,11 @@ DriWinProyect/
 | `/api/v1/recommendations/driver` | — | — | ✅ | — | — |
 | `/api/v1/recommendations/apps` | ✅ | — | — | — | — |
 | `/api/v1/health` | ✅ | — | — | — | — |
+| `/api/v1/auth` (registro, inicio y cierre de sesión) | — | — | ✅ | — | — |
+| `/api/v1/account` (estado, equipos, compra, privacidad, descarga y borrado de datos) | ✅ | — | ✅ | — | ✅ (`/devices/{id}`) |
+| `/api/v1/support-tickets` | — | — | ✅ | — | — |
+
+Las lecturas y recomendaciones son **públicas** (sin clave). Escribir en el catálogo exige `X-API-Key` (solo administración) y las rutas de la cuenta, el token de sesión `Authorization: Bearer dws_…`. Contrato completo: sección 5 del documento técnico.
 
 ## ✅ Requisitos previos
 
@@ -104,15 +112,27 @@ psql "host=driwin-db-server.postgres.database.azure.com port=5432 user=driwin_ad
 ```
 
 El script es **idempotente**: hace `DROP TABLE IF EXISTS ... CASCADE` y vuelve a
-crear las 8 tablas, 4 índices y la semilla. Verificación rápida:
+crear las 14 tablas, los índices y la semilla. Verificación rápida:
 
 ```sql
 SELECT COUNT(*) FROM user_profiles;        -- 4
-SELECT COUNT(*) FROM hardware_components;  -- 6
-SELECT COUNT(*) FROM driver_packages;      -- 9
+SELECT COUNT(*) FROM hardware_components;  -- 8
+SELECT COUNT(*) FROM driver_packages;      -- 23
 SELECT COUNT(*) FROM recommended_apps;     -- 20
-SELECT COUNT(*) FROM bloatware_rules;      -- 3
+SELECT COUNT(*) FROM bloatware_rules;      -- 30
 ```
+
+Después, **una sola vez**, crear los roles de mínimo privilegio y sus permisos. `init.sql`
+ya incluye el resultado del resto de las migraciones, así que en una base nueva solo hacen falta estas dos:
+
+```powershell
+# Local (mismo usuario que en el paso anterior)
+psql -U postgres -d driwin_catalog -v ON_ERROR_STOP=1 -f db/migrations/007_roles_minimo_privilegio.sql
+psql -U postgres -d driwin_catalog -v ON_ERROR_STOP=1 -f db/migrations/008_cuentas_y_suscripciones.sql
+```
+
+En Azure se ejecutan igual, con la cadena de `driwin_admin` del paso anterior. Luego se define la
+contraseña del rol de la API con `\password driwin_api` dentro de psql (nunca en un archivo).
 
 > Diagrama del modelo y diccionario de datos: [`db/modelo_datos.md`](./db/modelo_datos.md).
 
@@ -131,6 +151,10 @@ Variables mínimas del backend:
 
 ```dotenv
 API_KEY=<clave aleatoria de 32+ caracteres>
+# Cifra los datos personales de las cuentas. Sin ella, las rutas de cuenta responden 503.
+DATA_ENCRYPTION_KEY=<64 caracteres hexadecimales: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))">
+# Opcional: puerto local de la API (por defecto, 3000).
+# PORT=4300
 # Azure (TLS obligatorio):
 DATABASE_URL=postgresql://driwin_api:TU_PASSWORD@driwin-db-server.postgres.database.azure.com:5432/driwin_catalog?sslmode=require
 PGSSLMODE=require
@@ -153,7 +177,7 @@ cd server-api
 npm ci                # instala exactamente las versiones del lockfile
 npm run typecheck     # validación de tipos (0 errores)
 npm run build         # compilación a dist/
-npm test              # 66 pruebas unitarias y de contrato
+npm test              # 105 pruebas: unitarias, de contrato e integración con PostgreSQL en memoria
 npm run dev           # http://localhost:3000/api/v1/health
 ```
 
@@ -161,7 +185,7 @@ En otra terminal, verificar la sonda de vida:
 
 ```powershell
 curl "http://localhost:3000/api/v1/health"
-# {"status":"ok","version":"1.0.0","database":"up","latency_ms":3,...}
+# {"status":"ok","version":"1.1.0","database":"up","latency_ms":3,...}
 ```
 
 Producción:
@@ -199,15 +223,24 @@ No hace falta levantar nada localmente para consumir la API: está publicada en
   ejecuta las pruebas y sólo publica si todas pasan.
 * Las credenciales viven en las variables de entorno del App Service, nunca en el repositorio.
 * Plan gratuito (F1): tras un rato sin uso se suspende y la primera petición
-  puede tardar ~60 s. Las siguientes responden en menos de 1 s.
+  tarda casi un minuto (~54 s medido); la app lo avisa a los 5 s. Después, cada
+  consulta responde en unos 160 ms desde Chile ([benchmark](./docs/qa/benchmark/README.md)).
 
-### 6) Levantar el Front-End
+### 6) Levantar la app de escritorio
 
 ```powershell
 cd app-inicio-windows
 npm ci
-npm run dev           # http://localhost:5173
+npm test                 # 107 pruebas (interfaz, traducciones y políticas de seguridad de Electron)
+npm run electron:start   # compila y abre la app contra la API publicada en Azure
+npm run dist:win         # genera el instalador y la versión portable en release/
 ```
+
+* `npm run electron:start` y `npm run dist:win` usan `.env.production`, que apunta a la API de Azure
+  (la misma URL define la Content-Security-Policy de la app).
+* `npm run electron:dev` usa la API local (`VITE_API_BASE_URL`, por defecto `http://localhost:3000`).
+* El escaneo de hardware y las instalaciones solo funcionan en Windows 10/11; instalar drivers o
+  quitar bloatware pide permiso de administrador (UAC).
 
 ### 7) Importar la colección de pruebas
 
@@ -224,14 +257,15 @@ npm run dev           # http://localhost:5173
    Bloatware CRUD → Recommendations → Errores**.
 
 La colección incluye las 4 operaciones CRUD, la recomendación de driver, la
-unión de apps por perfil y los casos `400/401/403/404/409/422`.
+unión de apps por perfil y los casos `400/401/404/409/422` (incluida una clave revocada → `401`).
 
 ## 📡 Contrato y documentación del Hito 2
 
 * 📑 **[Documento Técnico Back-End (PDF)](./docs/Hito2/DriWin_Documento_Tecnico_Hito2.pdf)**
 * 📘 **[Contrato completo de la API y auditoría técnica](./docs/Hito2/backendInfo.md)**
 * 🧾 **[Consideraciones oficiales y rúbrica del Hito 2](./docs/Hito2/consideraciones_oficiales_del_hito_2.md)**
-* 🗄️ **[Script de base de datos](./db/init.sql)** · **[Modelo de datos](./db/modelo_datos.md)**
+* 🗄️ **[Script de base de datos](./db/init.sql)** · **[Migraciones](./db/migrations/)** · **[Modelo de datos](./db/modelo_datos.md)**
+* 📊 **[QA y seguridad del Hito 3](./docs/qa/README.md)** (benchmark, EXPLAIN ANALYZE, STRIDE, navegación, ISO/IEC 25010)
 * 🧪 **[Colección Postman / Thunder Client](./docs/postman/DriWin_Hito2.postman_collection.json)**
 * ⚖️ **[Aspectos legales, normativos y licenciamiento](./docs/Aspectos_Legales_Normativos_Licenciamiento_Hito2.md)**
 
@@ -249,10 +283,18 @@ unión de apps por perfil y los casos `400/401/403/404/409/422`.
 * Validación obligatoria con **Zod** de `body`, `params` y `query`.
 * SQL **100 % parametrizado** (`$1..$n`), sin `SELECT *` y sin concatenación.
 * Firewall de PostgreSQL cerrado: sólo acepta las IPs de salida del App Service.
-* TLS obligatorio hacia PostgreSQL (`sslmode=require`) y URLs de descarga
-  restringidas a los contenedores `apps/` y `drivers/` de Azure Blob Storage.
-* Logs minimizados: no registran cuerpos, query strings sensibles ni PII
-  (Ley N.º 21.719). La semilla usa **usuarios y correos ficticios**.
+* La API se conecta con el rol **`driwin_api`** (mínimo privilegio, migración 007), nunca como administrador.
+* TLS obligatorio hacia PostgreSQL (`sslmode=require`). La app solo instala drivers del contenedor
+  `drivers/` de Azure Blob, con SHA-256 y firma de Windows verificados; las apps se instalan con winget
+  o desde su página oficial.
+* La app de escritorio **no lleva claves**: la antigua clave de solo lectura estuvo dentro del `.exe`,
+  se trató como credencial expuesta y se revocó. Tiene además Content-Security-Policy, `sandbox` y
+  `contextIsolation`.
+* Datos personales de las cuentas cifrados (AES-256-GCM, scrypt para contraseñas), aviso de privacidad
+  con consentimiento registrado, y "Descargar mis datos" / "Borrar mis datos" (Ley N.º 21.719).
+* Logs minimizados: no registran cuerpos, query strings sensibles ni PII. La semilla usa **usuarios y correos ficticios**.
+* El CI audita las dependencias en cada Pull Request y Dependabot propone actualizaciones semanales.
+  Modelo de amenazas completo: [`docs/qa/stride/`](./docs/qa/stride/README.md).
 
 ## ⚖️ Licencia
 
