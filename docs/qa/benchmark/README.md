@@ -36,7 +36,7 @@ npm run bench -- --mode load  --base http://localhost:4300/api/v1 --label local-
 4. **El 404 (hardware no catalogado) hace 2 consultas** en vez de 1, para distinguir "no existe" (404) de "existe pero sin driver" (422). En local cuesta unos 7 ms más. En producción queda oculto bajo la red (P95 165 ms frente a 162 ms del caso 200). Se acepta por la precisión del mensaje.
 5. **Arranque en frío del F1: ~54 s** (medido con cronómetro el 2026-11-11, abriendo `/health` tras ~20 min sin uso). El plan gratuito suspende la app sin uso. En las corridas del benchmark el servidor estaba despierto (0,8 a 1,8 s), por eso se midió aparte. Consecuencias:
    - El cliente de la app espera hasta **90 s** (`REQUEST_TIMEOUT_MS` en `app-inicio-windows/src/api/client.ts`) en vez de los 10 s de la regla "2 × timeout del servidor". Se partió con 60 s, pero con 54 s medidos el margen era de solo 6 s.
-   - Es la **mayor debilidad de desempeño** de producción: la primera persona que abre la app tras un rato sin uso espera casi un minuto. **Decisión de costo del equipo:** se mantiene el plan gratuito durante el proyecto académico. Un lanzamiento comercial requiere un plan con "Always On"; con eso el timeout debe volver a 10 s.
+   - Es la **mayor debilidad de desempeño** de producción: la primera persona que abre la app tras un rato sin uso espera casi un minuto. **Decisión de costo del equipo:** se mantiene el plan gratuito durante la etapa piloto. Un lanzamiento comercial requiere un plan con "Always On"; con eso el timeout debe volver a 10 s.
    - Mitigación mientras tanto: a los 5 s de carga la app explica que el servidor está despertando (`LoadingServer` en `App.tsx`).
 
 ## Limitaciones

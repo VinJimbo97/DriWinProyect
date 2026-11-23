@@ -15,7 +15,7 @@
 **[⬇️ Descargar](https://github.com/VinJimbo97/DriWinProyect/releases/latest)** ·
 **[🎬 Video](https://youtu.be/Yz2jpcqObtQ)** ·
 **[📗 Manual de uso](./docs/Hito3/Manual_de_uso_e_instalacion.md)** ·
-**[📑 Documento del producto](./docs/Hito3/DriWin_Documento_Final_Hito3.pdf)** ·
+**[📑 Documento del producto](./docs/Hito3/DriWin_Documento_Hito3_final.pdf)** ·
 **[🩺 Estado de la API](https://driwin-api-hsgshffkeydpf2fe.canadacentral-01.azurewebsites.net/api/v1/health)**
 
 </div>
@@ -368,8 +368,8 @@ Evidencia y metodología: [`docs/qa/`](./docs/qa/README.md) (benchmark, EXPLAIN 
 
 | Etapa | Alcance | Documentos |
 |---|---|---|
-| **Producto final** | App de escritorio integrada con la API, cuentas DriWin Premium, seguridad y calidad medida | [Documento del producto (PDF)](./docs/Hito3/DriWin_Documento_Final_Hito3.pdf) · [Word](./docs/Hito3/DriWin_Documento_Final_Hito3.docx) · [Manual de uso e instalación](./docs/Hito3/Manual_de_uso_e_instalacion.md) · [Video](https://youtu.be/Yz2jpcqObtQ) · [Calidad y seguridad](./docs/qa/README.md) |
-| **Back-End** | API REST `/api/v1` + PostgreSQL + Azure Blob | [Documento técnico](./docs/Hito2/DriWin_Documento_Tecnico_Hito2.docx) · [Contrato de la API y auditoría](./docs/Hito2/backendInfo.md) · [Presentación](./docs/Hito2/DriWin_Presentacion_Hito2.pdf) · [Script de base de datos](./db/init.sql) · [Migraciones](./db/migrations/) · [Modelo de datos](./db/modelo_datos.md) · [Colección Postman](./docs/postman/DriWin_Hito2.postman_collection.json) · [Aspectos legales y licenciamiento](./docs/Aspectos_Legales_Normativos_Licenciamiento_Hito2.md) · [Consideraciones del Hito 2](./docs/Hito2/consideraciones_oficiales_del_hito_2.md) |
+| **Producto final** | App de escritorio integrada con la API, cuentas DriWin Premium, seguridad y calidad medida | [Documento del producto (PDF)](./docs/Hito3/DriWin_Documento_Hito3_final.pdf) · [Manual de uso e instalación](./docs/Hito3/Manual_de_uso_e_instalacion.md) · [Video](https://youtu.be/Yz2jpcqObtQ) · [Calidad y seguridad](./docs/qa/README.md) |
+| **Back-End** | API REST `/api/v1` + PostgreSQL + Azure Blob | [Documento técnico (PDF)](./docs/Hito2/DriWin_Documento_Tecnico_Hito2_final.pdf) · [Contrato de la API y auditoría](./docs/Hito2/backendInfo.md) · [Presentación (PDF)](./docs/Hito2/DriWin_Presentacion_Hito2.pptx.pdf) · [Script de base de datos](./db/init.sql) · [Migraciones](./db/migrations/) · [Modelo de datos](./db/modelo_datos.md) · [Colección Postman](./docs/postman/DriWin_Hito2.postman_collection.json) · [Aspectos legales y licenciamiento](./docs/Aspectos_Legales_Normativos_Licenciamiento_Hito2.md) · [Consideraciones del Hito 2](./docs/Hito2/consideraciones_oficiales_del_hito_2.md) |
 | **Propuesta** | Propuesta técnica, mapa de usuario, diagrama cliente-servidor y prototipo de interfaz | [Propuesta técnica](./docs/Propuesta_Tecnica.pdf) · [Láminas](./docs/Laminas_Presentacion_DriWin.pdf) · [Mapa del producto](./docs/Diagrama_Usuario.png) · [Arquitectura cliente-servidor](./docs/Diagrama_Tecnico.png) · [Prototipo navegable (Vercel)](https://driwin.vercel.app/) |
 
 ## 👥 Equipo

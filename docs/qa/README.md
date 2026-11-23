@@ -4,7 +4,7 @@ Evidencia medida y reproducible del aseguramiento de calidad de DriWin. **Empiez
 
 | Documento | Qué responde | Referencia |
 |---|---|---|
-| [**ISO/IEC 25010**](iso25010/README.md) | ¿Qué tan bueno es el producto? 38 métricas: 31 ✅, 6 ⚠️, 1 ❌ | ISO/IEC 25010:2011, anexo C |
+| [**ISO/IEC 25010**](iso25010/README.md) | ¿Qué tan bueno es el producto? 38 métricas: 32 ✅, 5 ⚠️, 1 ❌ | ISO/IEC 25010:2011, anexo C |
 | [Benchmark de la API](benchmark/README.md) | ¿Qué tan rápida es? P50/P95/P99 en Azure y carga local | *Database Performance at Scale* |
 | [EXPLAIN ANALYZE](explain/README.md) | ¿La base aguanta el crecimiento? Planes con 100.000 filas | *The Art of PostgreSQL* |
 | [Modelo de amenazas STRIDE](stride/README.md) | ¿Qué puede salir mal y cómo se evita? 31 amenazas | Tanya Janca, *Alice and Bob Learn Secure Coding* |

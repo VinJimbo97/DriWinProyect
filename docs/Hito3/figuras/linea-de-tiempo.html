@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Evolución de DriWin</title>
+<!-- Fechas tomadas del historial de git (PR unidos) y del registro de migraciones aplicadas en Azure. -->
+<style>
+  :root { --teal:#2a9fa6; --navy:#0f1b2d; --ink:#1d2733; --muted:#5b6b7f; }
+  html, body { margin:0; overflow:hidden; }
+  body { width:1400px; height:470px; background:#fff; font-family:'Segoe UI', Calibri, Arial, sans-serif; color:var(--ink); position:relative; }
+  h1 { font-size:20px; margin:18px 24px 4px; }
+  .sub { font-size:13.5px; color:var(--muted); margin:0 24px; }
+  .axis { position:absolute; left:40px; right:40px; top:228px; height:4px; background:var(--teal); border-radius:2px; }
+  .ev { position:absolute; width:150px; font-size:12.4px; line-height:1.35; }
+  .ev .d { font-weight:700; color:var(--teal); font-size:12.5px; }
+  .ev .t { font-weight:700; font-size:13.2px; margin:1px 0 2px; }
+  .ev.up { bottom:264px; } .ev.down { top:252px; }
+  .dot { position:absolute; top:221px; width:14px; height:14px; border-radius:50%; background:#fff; border:4px solid var(--navy); }
+  .phase { position:absolute; top:432px; font-size:12.5px; font-weight:700; color:#fff; background:var(--navy); padding:4px 10px; border-radius:4px; }
+</style>
+</head>
+<body>
+  <h1>Evolución del proyecto: de la propuesta al producto</h1>
+  <div class="sub">Hitos verificables en el historial del repositorio (Pull Requests unidos) y en las migraciones aplicadas en Azure.</div>
+  <div class="axis"></div>
+  <script>
+    const events = [
+      ['21–23 sep', 'Propuesta', 'Promesa, prototipo navegable y arquitectura en capas (Hito 1).'],
+      ['16–18 oct', 'Modelo de datos', 'init.sql reproducible: catálogo, perfiles, apps y bloatware.'],
+      ['24–26 oct', 'API en la nube', 'Express + PostgreSQL unidos a main y publicados en Azure con CI/CD.'],
+      ['30 oct', 'Drivers reales', 'Catálogo con instaladores reales en Blob (migración 002).'],
+      ['6 nov', 'Instalación real', 'Descarga, SHA-256, firma y UAC; instaladores visibles (PR 4–7).'],
+      ['7–8 nov', 'PC de muestra y apps', '23 drivers para el hardware real y apps con winget (PR 8–9).'],
+      ['9 nov', 'Cuentas y Premium', 'Roles de mínimo privilegio, cuentas cifradas y funciones Premium (PR 10–14).'],
+      ['10 nov', 'Seguridad', 'Dependencias, CSP, revocación de la clave expuesta y privacidad (PR 15–16).'],
+      ['11–12 nov', 'Calidad medida', 'Benchmark, EXPLAIN, STRIDE, navegación e ISO/IEC 25010.'],
+    ];
+    const left = 60, right = 1340, step = (right - left) / (events.length - 1);
+    events.forEach(([d, t, s], i) => {
+      const x = left + i * step;
+      const dot = document.createElement('div'); dot.className = 'dot'; dot.style.left = `${x - 7}px`; document.body.appendChild(dot);
+      const ev = document.createElement('div'); ev.className = `ev ${i % 2 ? 'down' : 'up'}`;
+      ev.style.left = `${Math.min(Math.max(x - 75, 12), 1400 - 162)}px`;
+      ev.innerHTML = `<div class="d">${d}</div><div class="t">${t}</div><div>${s}</div>`;
+      document.body.appendChild(ev);
+    });
+    [['Hito 1 · propuesta', 40], ['Hito 2 · motor back end', 300], ['Hito 3 · producto integrado, seguro y medido', 760]].forEach(([t, x]) => {
+      const p = document.createElement('div'); p.className = 'phase'; p.textContent = t; p.style.left = `${x}px`; document.body.appendChild(p);
+    });
+  </script>
+</body>
+</html>

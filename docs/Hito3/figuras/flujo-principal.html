@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Flujo principal de DriWin</title>
+<style>
+  :root { --teal:#2a9fa6; --navy:#0f1b2d; --ink:#1d2733; --muted:#5b6b7f; }
+  html, body { margin:0; overflow:hidden; }
+  body { width:1400px; height:362px; background:#fff; font-family:'Segoe UI', Calibri, Arial, sans-serif; color:var(--ink); position:relative; }
+  h1 { font-size:20px; margin:18px 24px 6px; }
+  .sub { font-size:13.5px; color:var(--muted); margin:0 24px 16px; }
+  .row { display:flex; gap:14px; padding:0 24px; align-items:stretch; }
+  .step { flex:1; border:2px solid var(--teal); border-radius:6px; background:#f4fafb; display:flex; flex-direction:column; position:relative; }
+  .step .n { background:var(--navy); color:#fff; font-weight:700; font-size:15px; padding:8px 10px; border-radius:4px 4px 0 0; }
+  .step .b { padding:10px 11px; font-size:13.2px; line-height:1.42; flex:1; }
+  .step .who { margin:0 11px 10px; display:flex; flex-wrap:wrap; gap:5px; }
+  .tag { font-size:11.5px; font-weight:700; padding:2px 7px; border-radius:10px; background:#e1eef0; color:#155e63; }
+  .tag.db { background:#fff1dc; color:#8a5a00; }
+  .step:not(:last-child)::after { content:'➜'; position:absolute; right:-14px; top:42%; color:var(--teal); font-size:20px; font-weight:900; z-index:2; }
+  .persist { margin:16px 24px 0; border-left:6px solid #b35f00; background:#fff6e5; padding:10px 14px; font-size:13.5px; line-height:1.45; }
+</style>
+</head>
+<body>
+  <h1>Flujo principal: del hardware detectado al dato que persiste</h1>
+  <div class="sub">Lo que ejecuta una persona sin ayuda del equipo. Cada paso indica qué capa trabaja; los pasos 3 y 5 llegan hasta PostgreSQL.</div>
+  <div class="row">
+    <div class="step"><div class="n">1 · Abrir y elegir perfil</div>
+      <div class="b">Cuestionario de intención (Gamer, Creador, Oficina, Desarrollador). Se puede elegir más de uno.</div>
+      <div class="who"><span class="tag">Presentación</span></div></div>
+    <div class="step"><div class="n">2 · Escaneo local</div>
+      <div class="b">El proceso main de Electron ejecuta PowerShell (CIM) y extrae VEN/DEV de cada dispositivo. No sale del PC.</div>
+      <div class="who"><span class="tag">Electron</span><span class="tag">Windows</span></div></div>
+    <div class="step"><div class="n">3 · Recomendación</div>
+      <div class="b">Una consulta por dispositivo a la API; el servicio cruza hardware × perfil × sistema y responde el driver óptimo o "no catalogado".</div>
+      <div class="who"><span class="tag">API</span><span class="tag db">PostgreSQL</span></div></div>
+    <div class="step"><div class="n">4 · Instalación verificada</div>
+      <div class="b">Descarga directa desde Blob, SHA-256 y firma de Windows comprobadas; el instalador oficial se abre visible con UAC.</div>
+      <div class="who"><span class="tag">Electron</span><span class="tag">Blob</span><span class="tag">UAC</span></div></div>
+    <div class="step"><div class="n">5 · Cuenta y Premium</div>
+      <div class="b">Crear cuenta (con aviso de privacidad) y comprar un plan simulado: la API escribe la cuenta, el equipo, la sesión y la suscripción.</div>
+      <div class="who"><span class="tag">API</span><span class="tag db">PostgreSQL</span></div></div>
+    <div class="step"><div class="n">6 · Cerrar y reabrir</div>
+      <div class="b">La app recupera la sesión (cifrada con DPAPI) y vuelve a pedir el estado a la API: el plan y los equipos siguen ahí.</div>
+      <div class="who"><span class="tag">Electron</span><span class="tag db">PostgreSQL</span></div></div>
+  </div>
+  <div class="persist"><b>Dónde persiste cada dato:</b> el perfil elegido, en el equipo (almacenamiento local de la app); la sesión, cifrada por Windows (DPAPI); la cuenta, los equipos, la compra y el consentimiento de privacidad, en PostgreSQL (Azure). Por eso el dato sobrevive a cerrar y reabrir la aplicación, e incluso a cambiar de computador.</div>
+</body>
+</html>
