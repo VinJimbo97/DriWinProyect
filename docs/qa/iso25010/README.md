@@ -12,7 +12,7 @@ DriWin está **alineado** con la norma; no es una certificación.
 
 | Característica | Métricas | ✅ | ⚠️ | ❌ | 📋 |
 |---|:---:|:---:|:---:|:---:|:---:|
-| 1. Adecuación funcional | 3 | 1 | 2 | 0 | 0 |
+| 1. Adecuación funcional | 3 | 2 | 1 | 0 | 0 |
 | 2. Eficiencia de desempeño | 6 | 5 | 0 | 1 | 0 |
 | 3. Compatibilidad | 3 | 3 | 0 | 0 | 0 |
 | 4. Usabilidad | 6 | 5 | 1 | 0 | 0 |
@@ -20,17 +20,17 @@ DriWin está **alineado** con la norma; no es una certificación.
 | 6. Seguridad | 7 | 6 | 1 | 0 | 0 |
 | 7. Mantenibilidad | 6 | 5 | 1 | 0 | 0 |
 | 8. Portabilidad | 3 | 3 | 0 | 0 | 0 |
-| **Producto (total)** | **38** | **31** | **6** | **1** | **0** |
+| **Producto (total)** | **38** | **32** | **5** | **1** | **0** |
 | Calidad en uso | 4 | 0 | 0 | 0 | 4 |
 
-**Lectura:** 31 de 38 métricas de producto cumplen la meta (82 %). Las 6 con observaciones son riesgos conocidos y documentados. La única que no cumple es el **arranque en frío del servidor** (54 s), causado por el plan gratuito de Azure: es una decisión de costo del equipo y está mitigada en la app. La **calidad en uso** requiere pruebas con usuarios externos y queda planificada (sección 9).
+**Lectura:** 32 de 38 métricas de producto cumplen la meta (84 %). Las 5 con observaciones son riesgos conocidos y documentados. La única que no cumple es el **arranque en frío del servidor** (54 s), causado por el plan gratuito de Azure: es una decisión de costo del equipo y está mitigada en la app. La **calidad en uso** requiere pruebas con usuarios externos y queda planificada (sección 9).
 
 ## 1. Adecuación funcional
 
 | Subcaracterística | Métrica | Meta | Resultado | Estado | Evidencia |
 |---|---|---|---|:---:|---|
 | Completitud funcional | Funciones del alcance acordado implementadas / acordadas | 100 % | **100 %** (15 de 15). Fuera del alcance por decisión del equipo (2026-11-09): "revisar al iniciar Windows", "quitar versiones antiguas" e "informe antes/después" | ✅ | Ver lista abajo |
-| Corrección funcional | Tests automatizados que pasan / total | 100 % | **212 / 212** (API 105 · UI 30 · Electron 77). Pruebas manuales en hardware real hechas; falta "Instalar todo" con UAC real | ⚠️ | CI en cada PR; pruebas del equipo |
+| Corrección funcional | Tests automatizados que pasan / total | 100 % | **212 / 212** (API 105 · UI 30 · Electron 77). Pruebas manuales en hardware real, incluido "Instalar todo" con UAC real | ✅ | CI en cada PR; pruebas del equipo |
 | Pertinencia funcional | Dispositivos del PC de muestra con driver en el catálogo / dispositivos detectados | Informativa | **3 / 9** (GPU NVIDIA, GPU Intel, Wi-Fi). El resto se muestra como "no catalogado" sin romper la lista | ⚠️ | Benchmark: escáner real del PC de muestra |
 
 Alcance acordado (15): escaneo de hardware · recomendación de drivers por perfil · instalación verificada con UAC · apps con winget o página oficial · bloatware BAJO/MEDIO · cuentas (registro, sesión, hasta 3 equipos) · compra simulada · Instalar todo · bloatware ALTO con punto de restauración · respaldo de drivers · quitar dispositivos desconectados · soporte técnico · aviso de privacidad y consentimiento · descargar y borrar mis datos · idioma y tema.
@@ -48,7 +48,7 @@ Alcance acordado (15): escaneo de hardware · recomendación de drivers por perf
 | Utilización de recursos | Índices redundantes | 0 | **0** (se quitó `idx_hardware_lookup`, migración 011) | ✅ | `explain/README.md` |
 | Capacidad | P99 y errores con 10 clientes concurrentes | ≤ 200 ms y 0 errores | **27,6 ms**, 0 errores en 2.400 peticiones (732 req/s) | ✅ | `benchmark/local-carga.md` |
 
-**Por qué no cumple el arranque en frío:** el plan gratuito de Azure suspende la API sin uso. Fue una decisión de costo del equipo para el proyecto académico; un lanzamiento comercial requiere un plan con "Always On". **Mitigación aplicada:** timeout del cliente de 90 s (antes no había) y un aviso a los 5 s explicando que el servidor está despertando.
+**Por qué no cumple el arranque en frío:** el plan gratuito de Azure suspende la API sin uso. Fue una decisión de costo del equipo para la etapa piloto; un lanzamiento comercial requiere un plan con "Always On". **Mitigación aplicada:** timeout del cliente de 90 s (antes no había) y un aviso a los 5 s explicando que el servidor está despertando.
 
 ## 3. Compatibilidad
 
@@ -124,7 +124,7 @@ Hasta ahora todo lo medido fue con el equipo. La calidad en uso se mide **con pe
 
 | Prioridad | Acción | Característica | Estado |
 |---|---|---|---|
-| Alta | Probar "Instalar todo" con UAC real en el PC de muestra | Adecuación funcional | Pendiente (equipo) |
+| Alta | Probar "Instalar todo" con UAC real en el PC de muestra | Adecuación funcional | ✅ Hecho (funciona correctamente) |
 | Alta | Prueba con 5 usuarios externos (sección 9) | Calidad en uso | Planificada |
 | Media | Ampliar el catálogo con fuentes oficiales | Pertinencia funcional | Propuesta |
 | Media | Plan con "Always On" antes de un lanzamiento comercial | Eficiencia / Fiabilidad | Decisión de costo documentada |

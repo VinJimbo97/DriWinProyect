@@ -1004,7 +1004,7 @@ Errores: `400` si `profiles` vacío, `404` si algún perfil no existe, `200` con
 ### 3.11 `GET /api/v1/health` 🟡
 
 ```json
-{ "status": "ok", "version": "1.0.0", "database": "up", "latency_ms": 3, "timestamp": "2026-10-21T14:10:00.000Z" }
+{ "status": "ok", "version": "1.1.0", "database": "up", "latency_ms": 3, "timestamp": "2026-10-21T14:10:00.000Z" }
 ```
 
 `200` si `SELECT 1` responde; `503` `DB_UNAVAILABLE` en caso contrario.
